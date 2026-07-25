@@ -1,0 +1,67 @@
+schemaVersion: "1"
+kind: mixin
+name: datadog
+displayName: Datadog
+description: Datadog investigation toolkit — pup CLI and Claude Datadog plugin
+
+network:
+  allowedDomains:
+    # Datadog API/app (all regions)
+    - datadoghq.com
+    - "*.datadoghq.com"
+    - datadoghq.eu
+    - "*.datadoghq.eu"
+    - ddog-gov.com
+    - "*.ddog-gov.com"
+    # pup CLI installation
+    - api.github.com
+    - github.com
+    - objects.githubusercontent.com
+
+commands:
+  install:
+    - command: |
+        set -e
+        mkdir -p /tmp/pup-install
+        RELEASE_URL=$(curl -fsSL https://api.github.com/repos/DataDog/pup/releases/latest \
+          | grep browser_download_url \
+          | grep -E 'linux.*(x86_64|amd64)' \
+          | grep -v '\.sha256' \
+          | head -1 \
+          | cut -d'"' -f4)
+        curl -fsSL "$RELEASE_URL" | tar xz -C /tmp/pup-install/
+        find /tmp/pup-install -maxdepth 2 -name pup -type f -exec install -m755 {} /usr/local/bin/pup \;
+        rm -rf /tmp/pup-install
+      user: "0"
+      description: Install pup CLI
+    - command: "claude plugin install datadog@claude-plugins-official"
+      user: "1000"
+      description: Install Claude Datadog plugin
+
+agentContext: |
+  ## Datadog
+
+  Two Datadog tools are available in this sandbox:
+
+  ### pup CLI
+  Datadog's official CLI tool for interacting with the Datadog API.
+
+  **Authentication (choose one):**
+  - OAuth2: `pup auth login` (requires DCR enabled on your Datadog org)
+  - API key: set `DD_API_KEY` and `DD_APP_KEY` environment variables
+  - Bearer token: set `DD_ACCESS_TOKEN`
+
+  **Site configuration:**
+  - Default: `DD_SITE=datadoghq.com` (US1)
+  - Other regions: `datadoghq.eu`, `us3.datadoghq.com`, `us5.datadoghq.com`, `ap1.datadoghq.com`
+
+  **Example commands:**
+  ```
+  pup auth login
+  pup monitors list
+  pup dashboards list
+  ```
+
+  ### Claude Datadog plugin
+  Installed as `datadog@claude-plugins-official`. Provides natural language access to Datadog data.
+  Configure with your Datadog API credentials when prompted.
