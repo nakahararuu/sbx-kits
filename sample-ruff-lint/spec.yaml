@@ -1,0 +1,16 @@
+schemaVersion: "1"
+kind: mixin
+name: ruff-lint
+displayName: Ruff Linter
+description: Python linting with shared team config
+
+network:
+  allowedDomains:
+    - pypi.org
+    - files.pythonhosted.org
+
+commands:
+  install:
+    - command: "uv tool install ruff@latest"
+      user: "1000"
+      description: Install Ruff
