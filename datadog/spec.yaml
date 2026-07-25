@@ -17,6 +17,8 @@ network:
     - api.github.com
     - github.com
     - objects.githubusercontent.com
+    # npx skills add (agent-skills install)
+    - registry.npmjs.org
 
 commands:
   install:
@@ -38,10 +40,12 @@ commands:
       user: "1000"
       description: Install Claude Datadog plugin
     - command: |
-        claude skill install dd-pup@datadog-labs/agent-skills
-        claude skill install dd-monitors@datadog-labs/agent-skills
-        claude skill install dd-logs@datadog-labs/agent-skills
-        claude skill install dd-apm@datadog-labs/agent-skills
-        claude skill install dd-docs@datadog-labs/agent-skills
+        npx skills add datadog-labs/agent-skills \
+          --skill dd-pup \
+          --skill dd-monitors \
+          --skill dd-logs \
+          --skill dd-apm \
+          --skill dd-docs \
+          --full-depth -y
       user: "1000"
       description: Install Datadog agent skills
