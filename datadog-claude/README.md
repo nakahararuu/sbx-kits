@@ -30,8 +30,3 @@ Claude Code 向け Datadog 調査用 mixin kit。
 ```bash
 sbx run claude --kit /path/to/datadog-claude/
 ```
-
-## 認証
-
-Datadog plugin のスラッシュコマンドから認証情報を設定します。
-pup CLI は `pup auth login`（OAuth2）または環境変数（`DD_API_KEY` + `DD_APP_KEY`）で認証できます。
