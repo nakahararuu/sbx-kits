@@ -36,7 +36,9 @@ commands:
         rm -rf /tmp/pup-install
       user: "0"
       description: Install pup CLI
-    - command: "claude plugin install datadog@claude-plugins-official"
+    - command: |
+        claude plugin marketplace update claude-plugins-official
+        claude plugin install datadog@claude-plugins-official
       user: "1000"
       description: Install Claude Datadog plugin
     - command: |
