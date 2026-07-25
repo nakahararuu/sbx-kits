@@ -1,0 +1,59 @@
+schemaVersion: "1"
+kind: mixin
+name: datadog-claude
+displayName: Datadog for Claude Code
+description: Datadog investigation toolkit for Claude Code — pup CLI, Claude Datadog plugin, and agent skills
+
+network:
+  allowedDomains:
+    # Datadog API/app (all regions)
+    - datadoghq.com
+    - "*.datadoghq.com"
+    - datadoghq.eu
+    - "*.datadoghq.eu"
+    - ddog-gov.com
+    - "*.ddog-gov.com"
+    # pup CLI installation
+    - api.github.com
+    - github.com
+    - objects.githubusercontent.com
+    # npx skills add (agent-skills install)
+    - registry.npmjs.org
+
+commands:
+  install:
+    - command: |
+        set -e
+        mkdir -p /tmp/pup-install
+        ARCH=$(uname -m)
+        case "$ARCH" in
+          x86_64) ARCH_PATTERN="Linux_x86_64" ;;
+          aarch64|arm64) ARCH_PATTERN="Linux_arm64" ;;
+          *) echo "Unsupported arch: $ARCH"; exit 1 ;;
+        esac
+        RELEASE_URL=$(curl -fsSL https://api.github.com/repos/datadog-labs/pup/releases/latest \
+          | grep browser_download_url \
+          | grep "${ARCH_PATTERN}\.tar\.gz" \
+          | grep -v '\.sbom\.' \
+          | head -1 \
+          | cut -d'"' -f4)
+        curl -fsSL "$RELEASE_URL" | tar xz -C /tmp/pup-install/
+        find /tmp/pup-install -maxdepth 2 -name pup -type f -exec install -m755 {} /usr/local/bin/pup \;
+        rm -rf /tmp/pup-install
+      user: "0"
+      description: Install pup CLI
+    - command: |
+        claude plugin marketplace add anthropics/claude-plugins-official
+        claude plugin install datadog@claude-plugins-official
+      user: "1000"
+      description: Install Claude Datadog plugin
+    - command: |
+        npx skills add datadog-labs/agent-skills \
+          --skill dd-pup \
+          --skill dd-monitors \
+          --skill dd-logs \
+          --skill dd-apm \
+          --skill dd-docs \
+          --full-depth -y --global
+      user: "1000"
+      description: Install Datadog agent skills
