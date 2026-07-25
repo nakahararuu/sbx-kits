@@ -1,8 +1,8 @@
 schemaVersion: "1"
 kind: mixin
-name: datadog
-displayName: Datadog
-description: Datadog investigation toolkit — pup CLI and Claude Datadog plugin
+name: datadog-claude
+displayName: Datadog for Claude Code
+description: Datadog investigation toolkit for Claude Code — pup CLI, Claude Datadog plugin, and agent skills
 
 network:
   allowedDomains:
