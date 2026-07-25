@@ -1,0 +1,44 @@
+schemaVersion: "1"
+kind: mixin
+name: claude-documentation
+displayName: Claude Documentation Tools
+description: Adds Miro and Slack plugins from the official Anthropic marketplace, plus the Cosense (Scrapbox) skill and CLI
+
+network:
+  allowedDomains:
+    # marketplace / plugin source install (GitHub)
+    - github.com
+    - api.github.com
+    # cosense CLI install
+    - registry.npmjs.org
+    # Miro MCP plugin
+    - mcp.miro.com
+    - miro.com
+    - "*.miro.com"
+    # Slack MCP plugin
+    - mcp.slack.com
+    - slack.com
+    - "*.slack.com"
+    # Cosense (Scrapbox) API
+    - scrapbox.io
+    - "*.scrapbox.io"
+
+commands:
+  install:
+    - command: |
+        set -e
+        claude plugin marketplace add anthropics/claude-plugins-official
+        claude plugin install miro@claude-plugins-official
+        claude plugin install slack@claude-plugins-official
+      user: "1000"
+      description: Install Miro and Slack plugins from the official Anthropic marketplace
+    - command: |
+        set -e
+        claude plugin marketplace add helpfeel/cosense-cli
+        claude plugin install cosense-cli@cosense-cli
+      user: "1000"
+      description: Install the Cosense (Scrapbox) skill plugin
+    - command: |
+        npm install -g @helpfeel/cosense-cli
+      user: "0"
+      description: Install the cosense CLI (companion tool required by the Cosense skill)
