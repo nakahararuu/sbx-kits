@@ -1,0 +1,118 @@
+{
+  "name": "datadog",
+  "version": "1.0.0",
+  "description": "Installs every skill from datadog-labs/agent-skills, the CLI tools those skills drive, and a sandbox network policy that allows all Datadog domains.",
+  "skills": {
+    "repo": "https://github.com/datadog-labs/agent-skills.git",
+    "ref": "main",
+    "strategy": "all",
+    "notes": "Every directory containing a SKILL.md is installed. Names that collide across directories (the k8s-ssi and linux-ssi variants of agent-install, enable-ssi, verify-ssi, troubleshoot-ssi and onboarding-summary) are disambiguated with their parent directory."
+  },
+  "tools": {
+    "core": {
+      "required": true,
+      "description": "Needed by essentially every skill.",
+      "items": ["curl", "git", "jq", "tar", "pup"]
+    },
+    "node": {
+      "required": false,
+      "description": "dd-apps (Datadog Apps scaffolding) and `npx skills`. Datadog requires Node.js 20.19+.",
+      "items": ["node", "npm", "npx"]
+    },
+    "k8s": {
+      "required": false,
+      "description": "dd-apm k8s-ssi skills (agent-install, enable-ssi, verify-ssi, troubleshoot-ssi, onboarding-summary).",
+      "items": ["kubectl", "helm"]
+    },
+    "gh": {
+      "required": false,
+      "description": "dd-software-delivery unblock-pr, which falls back to `gh run rerun` when the Datadog MCP server is unavailable.",
+      "items": ["gh"]
+    },
+    "python": {
+      "required": false,
+      "description": "agent-observability experiment/eval skills, which generate and run ddtrace.llmobs code. Installed into a dedicated venv so the system interpreter is left alone.",
+      "items": ["python3", "ddtrace"]
+    }
+  },
+  "network": {
+    "datadog": {
+      "description": "Every Datadog site and every Datadog-owned apex domain, including subdomains. This is the policy the kit writes into Claude Code's sandbox settings.",
+      "allowedDomains": [
+        "datadoghq.com",
+        "*.datadoghq.com",
+        "datadoghq.eu",
+        "*.datadoghq.eu",
+        "ddog-gov.com",
+        "*.ddog-gov.com",
+        "datad0g.com",
+        "*.datad0g.com",
+        "datadoghq.dev",
+        "*.datadoghq.dev",
+        "dtdg.co",
+        "*.dtdg.co",
+        "datadoghq-browser-agent.com",
+        "*.datadoghq-browser-agent.com",
+        "browser-intake-datadoghq.com",
+        "*.browser-intake-datadoghq.com",
+        "browser-intake-us3-datadoghq.com",
+        "*.browser-intake-us3-datadoghq.com",
+        "browser-intake-us5-datadoghq.com",
+        "*.browser-intake-us5-datadoghq.com",
+        "browser-intake-ap1-datadoghq.com",
+        "*.browser-intake-ap1-datadoghq.com",
+        "browser-intake-ap2-datadoghq.com",
+        "*.browser-intake-ap2-datadoghq.com",
+        "browser-intake-datadoghq.eu",
+        "*.browser-intake-datadoghq.eu",
+        "browser-intake-ddog-gov.com",
+        "*.browser-intake-ddog-gov.com",
+        "browser-intake-us2-ddog-gov.com",
+        "*.browser-intake-us2-ddog-gov.com"
+      ]
+    },
+    "toolchain": {
+      "description": "Only needed while install.sh downloads the CLI tools. Deliberately kept out of settings.json — apply settings.install.json instead if you run the installer from inside a sandboxed shell.",
+      "allowedDomains": [
+        "github.com",
+        "*.github.com",
+        "githubusercontent.com",
+        "*.githubusercontent.com",
+        "nodejs.org",
+        "*.nodejs.org",
+        "npmjs.org",
+        "*.npmjs.org",
+        "npmjs.com",
+        "*.npmjs.com",
+        "k8s.io",
+        "*.k8s.io",
+        "helm.sh",
+        "*.helm.sh",
+        "pypi.org",
+        "*.pypi.org",
+        "pythonhosted.org",
+        "*.pythonhosted.org"
+      ]
+    }
+  },
+  "mcp": {
+    "description": "Optional. Several skills prefer the Datadog MCP server over the pup CLI; agent-observability requires it. Installed only with --with-mcp, and each server still needs an interactive OAuth login.",
+    "servers": [
+      {
+        "name": "datadog-mcp-core",
+        "transport": "http",
+        "url": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core"
+      },
+      {
+        "name": "datadog-llmo-mcp",
+        "transport": "http",
+        "url": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=llmobs"
+      },
+      {
+        "name": "datadog-software-delivery-mcp",
+        "transport": "http",
+        "url": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp?toolsets=core,software-delivery"
+      }
+    ]
+  }
+}
