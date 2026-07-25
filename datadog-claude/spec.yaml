@@ -25,10 +25,16 @@ commands:
     - command: |
         set -e
         mkdir -p /tmp/pup-install
-        RELEASE_URL=$(curl -fsSL https://api.github.com/repos/DataDog/pup/releases/latest \
+        ARCH=$(uname -m)
+        case "$ARCH" in
+          x86_64) ARCH_PATTERN="Linux_x86_64" ;;
+          aarch64|arm64) ARCH_PATTERN="Linux_arm64" ;;
+          *) echo "Unsupported arch: $ARCH"; exit 1 ;;
+        esac
+        RELEASE_URL=$(curl -fsSL https://api.github.com/repos/datadog-labs/pup/releases/latest \
           | grep browser_download_url \
-          | grep -E 'linux.*(x86_64|amd64)' \
-          | grep -v '\.sha256' \
+          | grep "${ARCH_PATTERN}\.tar\.gz" \
+          | grep -v '\.sbom\.' \
           | head -1 \
           | cut -d'"' -f4)
         curl -fsSL "$RELEASE_URL" | tar xz -C /tmp/pup-install/
