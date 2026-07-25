@@ -1,0 +1,10 @@
+kind: mixin
+name: allow-specific-domains
+version: "0.1"
+description: "Allow only specific domains for outbound network access"
+network:
+  allowedDomains:
+    - api.example.com
+    - "*.cdn.example.com"
+  deniedDomains:
+    - telemetry.example.com
