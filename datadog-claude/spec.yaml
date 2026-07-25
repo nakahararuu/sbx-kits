@@ -54,6 +54,6 @@ commands:
           --skill dd-logs \
           --skill dd-apm \
           --skill dd-docs \
-          --full-depth -y
+          --full-depth -y --global
       user: "1000"
       description: Install Datadog agent skills
