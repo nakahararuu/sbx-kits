@@ -37,31 +37,11 @@ commands:
     - command: "claude plugin install datadog@claude-plugins-official"
       user: "1000"
       description: Install Claude Datadog plugin
-
-agentContext: |
-  ## Datadog
-
-  Two Datadog tools are available in this sandbox:
-
-  ### pup CLI
-  Datadog's official CLI tool for interacting with the Datadog API.
-
-  **Authentication (choose one):**
-  - OAuth2: `pup auth login` (requires DCR enabled on your Datadog org)
-  - API key: set `DD_API_KEY` and `DD_APP_KEY` environment variables
-  - Bearer token: set `DD_ACCESS_TOKEN`
-
-  **Site configuration:**
-  - Default: `DD_SITE=datadoghq.com` (US1)
-  - Other regions: `datadoghq.eu`, `us3.datadoghq.com`, `us5.datadoghq.com`, `ap1.datadoghq.com`
-
-  **Example commands:**
-  ```
-  pup auth login
-  pup monitors list
-  pup dashboards list
-  ```
-
-  ### Claude Datadog plugin
-  Installed as `datadog@claude-plugins-official`. Provides natural language access to Datadog data.
-  Configure with your Datadog API credentials when prompted.
+    - command: |
+        claude skill install dd-pup@datadog-labs/agent-skills
+        claude skill install dd-monitors@datadog-labs/agent-skills
+        claude skill install dd-logs@datadog-labs/agent-skills
+        claude skill install dd-apm@datadog-labs/agent-skills
+        claude skill install dd-docs@datadog-labs/agent-skills
+      user: "1000"
+      description: Install Datadog agent skills
