@@ -1,0 +1,42 @@
+schemaVersion: "2"
+kind: mixin
+name: sbx-kit-dev
+displayName: sbx Kit Dev Tools
+description: Installs the sbx CLI so kits in this monorepo can be validated (sbx kit validate/inspect/pack) from inside the sandbox
+
+agentContext: |
+  This sandbox has the `sbx` CLI installed for developing Docker Sandboxes kits.
+
+  After editing any kit's `spec.yaml`, run `sbx kit validate <kit-dir>` before committing.
+  It catches schema errors and deprecated-field warnings (e.g. v1 `network.allowedDomains`
+  vs kit-spec v2 `caps.network.allow`) that are easy to miss by just reading the file.
+
+caps:
+  network:
+    allow:
+      # latest-release lookup + asset download
+      - api.github.com
+      - github.com
+      - objects.githubusercontent.com
+
+commands:
+  install:
+    - command: |
+        set -e
+        mkdir -p /tmp/sbx-cli-install
+        ARCH=$(uname -m)
+        case "$ARCH" in
+          x86_64) ARCH_PATTERN="linux-amd64" ;;
+          aarch64|arm64) ARCH_PATTERN="linux-arm64" ;;
+          *) echo "Unsupported arch: $ARCH"; exit 1 ;;
+        esac
+        RELEASE_URL=$(curl -fsSL https://api.github.com/repos/docker/sbx-releases/releases/latest \
+          | grep browser_download_url \
+          | grep "DockerSandboxes-${ARCH_PATTERN}\.tar\.gz" \
+          | head -1 \
+          | cut -d'"' -f4)
+        curl -fsSL "$RELEASE_URL" | tar xz -C /tmp/sbx-cli-install docker-sbx/sbx
+        install -m755 /tmp/sbx-cli-install/docker-sbx/sbx /usr/local/bin/sbx
+        rm -rf /tmp/sbx-cli-install
+      user: "0"
+      description: Install the sbx CLI (static binary, no daemon/VM setup required for kit validate/inspect/pack)
