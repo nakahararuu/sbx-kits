@@ -2,7 +2,7 @@ schemaVersion: "2"
 kind: mixin
 name: datadog-claude
 displayName: Datadog for Claude Code
-description: Datadog investigation toolkit for Claude Code — pup CLI, Claude Datadog plugin, and agent skills
+description: Datadog investigation toolkit for Claude Code — pup CLI, Claude Datadog plugin, Slack plugin, and agent skills
 
 caps:
   network:
@@ -20,6 +20,10 @@ caps:
       - objects.githubusercontent.com
       # npx skills add (agent-skills install)
       - registry.npmjs.org
+      # Slack MCP plugin
+      - mcp.slack.com
+      - slack.com
+      - "*.slack.com"
 
 commands:
   install:
@@ -46,8 +50,9 @@ commands:
     - command: |
         claude plugin marketplace add anthropics/claude-plugins-official
         claude plugin install datadog@claude-plugins-official
+        claude plugin install slack@claude-plugins-official
       user: "1000"
-      description: Install Claude Datadog plugin
+      description: Install Claude Datadog and Slack plugins
     - command: |
         npx skills add datadog-labs/agent-skills \
           --skill dd-pup \
