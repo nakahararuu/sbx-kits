@@ -1,6 +1,6 @@
 # chrome-devtools-host
 
-サンドボックス内の Claude Code から、**ホスト側で起動した Chrome** を chrome-devtools-mcp 経由で操作できるようにする mixin kit。サンドボックス内で Chrome 自体を起動するのではなく、ホストの Chrome にリモートデバッグ接続する構成が前提。
+サンドボックス内の Claude Code から、**ホスト側で起動した Chrome** を公式の `chrome-devtools-mcp` plugin（anthropics/claude-plugins-official マーケットプレイス）経由で操作できるようにする mixin kit。サンドボックス内で Chrome 自体を起動するのではなく、ホストの Chrome にリモートデバッグ接続する構成が前提。
 
 ## 事前準備（ホスト側）
 
@@ -18,10 +18,15 @@ Chrome をリモートデバッグ有効・全interfaceバインドで起動し�
 
 ## インストール内容
 
-1. **socat** — `apt-get install socat`
-2. **chrome-devtools-mcp@1.6.0** — `npm install -g`
-3. **MCP サーバー登録** — `claude mcp add chrome-devtools-host --scope user -- npx chrome-devtools-mcp@1.6.0 --browser-url=http://localhost:9222`
-4. **socat ブリッジの自動起動**（`commands.startup`, `background: true`）— サンドボックス起動のたびに `localhost:9222 -> host.docker.internal:9222` の TCP フォワードを立ち上げる（idempotent: 既に起動していればスキップ）
+1. **socat, jq** — `apt-get install socat jq`（jq は次のステップの plugin 設定パッチ用）
+2. **公式 chrome-devtools-mcp plugin** — `claude plugin marketplace add anthropics/claude-plugins-official` → `claude plugin install chrome-devtools-mcp@claude-plugins-official`
+3. **plugin の起動引数パッチ + socat ブリッジの自動起動**（`commands.startup`, `background: true`）— サンドボックス起動のたびに以下を行う:
+   - plugin がキャッシュしている `.claude-plugin/plugin.json` の `mcpServers.chrome-devtools.args` に `--browser-url=http://localhost:9222` が無ければ `jq` で追記（idempotent）
+   - `localhost:9222 -> host.docker.internal:9222` の TCP フォワード（socat）が起動していなければ起動（idempotent）
+
+## なぜ plugin.json をパッチするのか
+
+公式 plugin の `plugin.json` はデフォルトで `npx chrome-devtools-mcp@1.6.0` をそのまま起動する設定になっており、`--browser-url` が付いていないためサンドボックス内で自前の Chrome を起動しようとしてしまう。Claude Code には plugin 提供の MCP サーバー設定を宣言的に上書きする仕組みが無く（`claude mcp add` で同名サーバーを user scope に足しても `plugin:chrome-devtools-mcp:chrome-devtools` とは別エントリとして共存するだけで上書きにはならないことを実機で確認済み）、plugin がキャッシュしているファイルを直接書き換えるのが唯一確実な方法。`claude plugin update` などでキャッシュがリセットされる可能性があるため、`commands.startup` で毎回パッチを再適用する。
 
 ## なぜ socat が必要か（Host ヘッダー回避）
 
@@ -31,14 +36,15 @@ Chrome の DevTools WebSocket サーバーは `Host` ヘッダーが `localhost:
 
 ## agentContext
 
-上記の背景（ホスト Chrome の起動方法、socat ブリッジが必要な理由、`--browser-url` を必ず `localhost:9222` に向けること、トラブルシュート手順）を agent memory に注入する。サンドボックス内の Claude がこの kit の存在だけを見て、Host ヘッダーの罠にハマらないようにするため。
+上記の背景（ホスト Chrome の起動方法、plugin.json パッチと socat ブリッジが必要な理由、`--browser-url` を必ず `localhost:9222` に向けること、トラブルシュート手順）を agent memory に注入する。サンドボックス内の Claude がこの kit の存在だけを見て、Host ヘッダーの罠にハマらないようにするため。
 
 ## ネットワーク
 
 | 用途 | ドメイン |
 |------|----------|
 | ホストの Chrome DevTools ポートへの接続（socat 経由） | `localhost:9222` |
-| chrome-devtools-mcp の npm インストール/解決 | `registry.npmjs.org` |
+| chrome-devtools-mcp の npx 解決(MCP サーバー起動時) | `registry.npmjs.org` |
+| 公式マーケットプレイス・plugin ソースの取得（git clone） | `github.com`, `api.github.com` |
 
 ## 使い方
 
@@ -46,6 +52,6 @@ Chrome の DevTools WebSocket サーバーは `Host` ヘッダーが `localhost:
 sbx run claude --kit /path/to/chrome-devtools-host/
 ```
 
-導入後、Claude から `chrome-devtools-host` という名前の MCP サーバーとして Chrome DevTools ツールが使える。
+導入後、Claude から見ると `claude mcp list` に `plugin:chrome-devtools-mcp:chrome-devtools` という名前で（`--browser-url=http://localhost:9222` 付きで）Chrome DevTools ツールが使える。
 
 see: https://docs.docker.com/ai/sandboxes/customize/kits/

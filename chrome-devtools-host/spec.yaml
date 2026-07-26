@@ -2,11 +2,12 @@ schemaVersion: "2"
 kind: mixin
 name: chrome-devtools-host
 displayName: Chrome DevTools (Host Browser)
-description: Lets Claude Code control the Chrome browser running on the host machine via chrome-devtools-mcp, bridging the sandbox to the host's remote-debugging port
+description: Lets Claude Code control the Chrome browser running on the host machine via the official chrome-devtools-mcp plugin, bridging the sandbox to the host's remote-debugging port
 
 agentContext: |
   This sandbox is set up to control a Chrome browser running on the **host** machine
-  (not inside the sandbox) via chrome-devtools-mcp.
+  (not inside the sandbox) via the official `chrome-devtools-mcp` plugin
+  (anthropics/claude-plugins-official marketplace).
 
   Prerequisite (host side, one-time per host restart): the user must launch Chrome on
   the host with remote debugging bound to all interfaces:
@@ -21,10 +22,13 @@ agentContext: |
   connections coming from Docker.
 
   What this kit already did:
-  - Installed `socat` and `chrome-devtools-mcp@1.6.0` (global npm package).
-  - Registered an MCP server named `chrome-devtools-host` pointing at
-    `http://localhost:9222` via `--browser-url`, so it does NOT launch its own Chrome
-    inside the sandbox.
+  - Installed the official `chrome-devtools-mcp@claude-plugins-official` plugin
+    (appears as `plugin:chrome-devtools-mcp:chrome-devtools` in `claude mcp list`).
+  - Patched that plugin's cached `.claude-plugin/plugin.json` to append
+    `--browser-url=http://localhost:9222` to its launch args, so it connects to the
+    host's Chrome instead of launching its own inside the sandbox. This patch is
+    re-applied idempotently on every sandbox boot, since a `claude plugin update` can
+    reset the plugin's cached files and drop it.
   - Starts a background `socat` process on every sandbox boot that forwards
     `localhost:9222` -> `host.docker.internal:9222`.
 
@@ -37,12 +41,17 @@ agentContext: |
   Never point `--browser-url` at `host.docker.internal:9222` directly — always go
   through `localhost:9222`.
 
-  If MCP tool calls time out or are refused, check in this order:
+  If MCP tool calls time out, are refused, or `claude mcp list` shows the
+  `chrome-devtools` server invoked without `--browser-url`, check in this order:
   1. `pgrep -fa socat` — if empty, the bridge died (it does not survive a sandbox
      restart on its own, which is why this kit re-launches it at every startup); restart
      it manually with:
      `socat TCP-LISTEN:9222,fork,reuseaddr TCP:host.docker.internal:9222 &`
-  2. `curl -s http://localhost:9222/json/version` — should return Chrome's version JSON
+  2. Check whether the plugin's cached `plugin.json` still has `--browser-url` in its
+     args (`grep -r browser-url ~/.claude/plugins/cache/claude-plugins-official/chrome-devtools-mcp/*/.claude-plugin/plugin.json`);
+     if a plugin update reset it, re-run this kit's patch startup command, or restart
+     the sandbox.
+  3. `curl -s http://localhost:9222/json/version` — should return Chrome's version JSON
      if both the bridge and the host Chrome are up. If it hangs or refuses, ask the
      user to confirm Chrome is running on the host with the flags above.
 
@@ -52,30 +61,37 @@ caps:
       # host.docker.internal:9222 access is granted under the "localhost:<port>"
       # policy convention used for reaching host-bound services
       - localhost:9222
-      # chrome-devtools-mcp npm package install/resolution
+      # chrome-devtools-mcp npx resolution at MCP server start
       - registry.npmjs.org
+      # official marketplace + plugin source (git-clone)
+      - github.com
+      - api.github.com
 
 commands:
   install:
     - command: |
         set -e
         apt-get update -qq
-        apt-get install -y -qq socat
+        apt-get install -y -qq socat jq
       user: "0"
-      description: Install socat (used to bridge the sandbox to the host's Chrome DevTools port)
+      description: Install socat (host bridge) and jq (patching the plugin's MCP config)
     - command: |
-        npm install -g chrome-devtools-mcp@1.6.0
+        set -e
+        claude plugin marketplace add anthropics/claude-plugins-official
+        claude plugin install chrome-devtools-mcp@claude-plugins-official
       user: "1000"
-      description: Install chrome-devtools-mcp
-    - command: |
-        claude mcp add chrome-devtools-host --scope user -- npx chrome-devtools-mcp@1.6.0 --browser-url=http://localhost:9222
-      user: "1000"
-      description: Register the chrome-devtools-mcp MCP server pointed at the host's Chrome via the socat bridge
+      description: Install the official chrome-devtools-mcp plugin
   startup:
     - command:
         - bash
         - -c
-        - "pgrep -f 'socat TCP-LISTEN:9222' >/dev/null 2>&1 || exec socat TCP-LISTEN:9222,fork,reuseaddr TCP:host.docker.internal:9222"
+        - |
+          set -e
+          PJ=$(find "$HOME/.claude/plugins/cache/claude-plugins-official/chrome-devtools-mcp" -path '*/.claude-plugin/plugin.json' 2>/dev/null | head -1)
+          if [ -n "$PJ" ] && ! grep -q -- '--browser-url=http://localhost:9222' "$PJ"; then
+            jq '(.mcpServers["chrome-devtools"].args) |= (if index("--browser-url=http://localhost:9222") then . else . + ["--browser-url=http://localhost:9222"] end)' "$PJ" > "$PJ.tmp" && mv "$PJ.tmp" "$PJ"
+          fi
+          pgrep -f 'socat TCP-LISTEN:9222' >/dev/null 2>&1 || exec socat TCP-LISTEN:9222,fork,reuseaddr TCP:host.docker.internal:9222
       user: "1000"
       background: true
-      description: Bridge localhost:9222 -> host Chrome DevTools port (dies on sandbox restart, so it must relaunch every startup)
+      description: Ensure the plugin points at the host bridge (survives plugin updates) and (re)launch the socat bridge (dies on sandbox restart)
