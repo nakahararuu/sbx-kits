@@ -11,7 +11,7 @@ kit の仕様（schemaVersion、caps.network、commands など）については
 | [`sbx-kit-dev`](./sbx-kit-dev) | このモノレポで kit を開発するためのツールをインストールするkit |
 | [`chrome-devtools-host`](./chrome-devtools-host) | ホストマシン上で動く Chrome を `chrome-devtools-mcp` 経由で操作できるようにする |
 | [`claude-documentation`](./claude-documentation) | ClaudeがMiro、Cosenseを用いたドキュメンテーションを支援できるようにする |
-| [`datadog-claude`](./datadog-claude) | Datadog 調査用ツール一式（`pup` CLI、Datadog プラグイン、agent skills） |
+| [`datadog-claude`](./datadog-claude) | Datadogを使ったトラブルシューティング用ツール一式 |
 | [`nakahararuu-claude-plugins`](./nakahararuu-claude-plugins) | `nakahararuu/claude-plugins` marketplace を追加し、公開されている全プラグインをインストールする |
 | [`sample-network-policy`](./sample-network-policy) | ネットワークポリシー（allow/deny）のみを設定するサンプル |
 | [`sample-ruff-lint`](./sample-ruff-lint) | チーム共通設定付きで Ruff（Python linter）を導入するサンプル |
