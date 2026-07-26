@@ -18,11 +18,8 @@ Chrome をリモートデバッグ有効・全interfaceバインドで起動し�
 
 ## インストール内容
 
-1. **socat, jq** — `apt-get install socat jq`（jq は次のステップの plugin 設定パッチ用）
-2. **公式 chrome-devtools-mcp plugin** — `claude plugin marketplace add anthropics/claude-plugins-official` → `claude plugin install chrome-devtools-mcp@claude-plugins-official`
-3. **plugin の起動引数パッチ + socat ブリッジの自動起動**（`commands.startup`, `background: true`）— サンドボックス起動のたびに以下を行う:
-   - plugin がキャッシュしている `.claude-plugin/plugin.json` の `mcpServers.chrome-devtools.args` に `--browser-url=http://localhost:9222` が無ければ `jq` で追記（idempotent）
-   - `localhost:9222 -> host.docker.internal:9222` の TCP フォワード（socat）が起動していなければ起動（idempotent）
+1. **公式 chrome-devtools-mcp plugin** — `claude plugin marketplace add anthropics/claude-plugins-official` → `claude plugin install chrome-devtools-mcp@claude-plugins-official`
+2. **ホスト側の Chrome への接続設定**（`commands.startup`, `background: true`）— サンドボックス起動のたびに、plugin がホスト側の Chrome に接続するようパッチし、`localhost:9222 -> host.docker.internal:9222` の接続ブリッジが起動していなければ起動する(idempotent)
 
 ## なぜ plugin.json をパッチするのか
 
@@ -33,10 +30,6 @@ Chrome をリモートデバッグ有効・全interfaceバインドで起動し�
 Chrome の DevTools WebSocket サーバーは `Host` ヘッダーが `localhost:<port>` かIPリテラル以外だと接続を拒否する。MCP サーバーが `host.docker.internal:9222` に直接繋ぐと `Host: host.docker.internal:9222` になり拒否されるが、`socat TCP-LISTEN:9222 -> TCP:host.docker.internal:9222` を経由して `localhost:9222` 宛に接続すれば、Chrome から見える `Host` ヘッダーは `localhost:9222` になり受理される。
 
 `socat` はサンドボックス再起動のたびに消えるため、`commands.startup` で毎回起動し直す設計にしている。
-
-## agentContext
-
-上記の背景（ホスト Chrome の起動方法、plugin.json パッチと socat ブリッジが必要な理由、`--browser-url` を必ず `localhost:9222` に向けること、トラブルシュート手順）を agent memory に注入する。サンドボックス内の Claude がこの kit の存在だけを見て、Host ヘッダーの罠にハマらないようにするため。
 
 ## ネットワーク
 
