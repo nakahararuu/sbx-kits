@@ -53,6 +53,13 @@ kit がツールをインストールしてから実際に使うまでに、通�
 
 ### 4. 動作確認の方法
 
-kit を作成したら、`commands.install` を実行してエラーなく完了するかで allowlist の過不足に気づけます。通信が拒否されるとインストールコマンドがエラーで失敗するため、エラーメッセージに出てくるホスト名を allowlist に追記して再検証してください。
+network policy はサンドボックス内のプロキシが強制するものなので、`commands.install` に書いたコマンドをサンドボックスの外（手元のシェルなど）でそのまま実行しても検証にはなりません。かならず kit を実際にサンドボックスへ適用して確認してください。
+
+```bash
+sbx run <agent> --kit /path/to/kit/   # 新規サンドボックスを作成して kit を適用
+sbx kit add <sandbox名> /path/to/kit/ # 既存サンドボックスに kit を追加
+```
+
+allowlist が不足しているドメインへの通信は、サンドボックス内で `commands.install` 実行中に HTTP 403 で拒否されます。エラーメッセージに出てくるホスト名を `network.allowedDomains` に追記し、`sbx kit add` などで再適用して再検証してください。
 
 参考実装: `datadog-claude/spec.yaml`、`claude-documentation/spec.yaml`、`nakahararuu-claude-plugins/spec.yaml` の `network.allowedDomains` を参照。
