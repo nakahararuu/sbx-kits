@@ -10,7 +10,7 @@ kit の仕様（schemaVersion、caps.network、commands など）については
 | --- | --- |
 | [`sbx-kit-dev`](./sbx-kit-dev) | このモノレポで kit を開発するためのツールをインストールするkit |
 | [`chrome-devtools-host`](./chrome-devtools-host) | ホストマシン上で動く Chrome を `chrome-devtools-mcp` 経由で操作できるようにする |
-| [`claude-documentation`](./claude-documentation) | Miro / Slack の公式プラグインと Cosense (Scrapbox) の skill・CLI を追加する |
+| [`claude-documentation`](./claude-documentation) | ClaudeがMiro、Cosenseを用いたドキュメンテーションを支援できるようにする |
 | [`datadog-claude`](./datadog-claude) | Datadog 調査用ツール一式（`pup` CLI、Datadog プラグイン、agent skills） |
 | [`nakahararuu-claude-plugins`](./nakahararuu-claude-plugins) | `nakahararuu/claude-plugins` marketplace を追加し、公開されている全プラグインをインストールする |
 | [`sample-network-policy`](./sample-network-policy) | ネットワークポリシー（allow/deny）のみを設定するサンプル |
