@@ -1,13 +1,14 @@
-schemaVersion: "1"
+schemaVersion: "2"
 kind: mixin
 name: nakahararuu-claude-plugins
 displayName: nakahararuu Claude Plugins
 description: Adds the nakahararuu/claude-plugins marketplace and installs every plugin it publishes
 
-network:
-  allowedDomains:
-    - github.com
-    - api.github.com
+caps:
+  network:
+    allow:
+      - github.com
+      - api.github.com
 
 commands:
   install:

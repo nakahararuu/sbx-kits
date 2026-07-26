@@ -1,24 +1,25 @@
-schemaVersion: "1"
+schemaVersion: "2"
 kind: mixin
 name: datadog-claude
 displayName: Datadog for Claude Code
 description: Datadog investigation toolkit for Claude Code — pup CLI, Claude Datadog plugin, and agent skills
 
-network:
-  allowedDomains:
-    # Datadog API/app (all regions)
-    - datadoghq.com
-    - "*.datadoghq.com"
-    - datadoghq.eu
-    - "*.datadoghq.eu"
-    - ddog-gov.com
-    - "*.ddog-gov.com"
-    # pup CLI installation
-    - api.github.com
-    - github.com
-    - objects.githubusercontent.com
-    # npx skills add (agent-skills install)
-    - registry.npmjs.org
+caps:
+  network:
+    allow:
+      # Datadog API/app (all regions)
+      - datadoghq.com
+      - "*.datadoghq.com"
+      - datadoghq.eu
+      - "*.datadoghq.eu"
+      - ddog-gov.com
+      - "*.ddog-gov.com"
+      # pup CLI installation
+      - api.github.com
+      - github.com
+      - objects.githubusercontent.com
+      # npx skills add (agent-skills install)
+      - registry.npmjs.org
 
 commands:
   install:

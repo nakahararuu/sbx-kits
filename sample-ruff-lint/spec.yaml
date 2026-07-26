@@ -1,13 +1,14 @@
-schemaVersion: "1"
+schemaVersion: "2"
 kind: mixin
 name: ruff-lint
 displayName: Ruff Linter
 description: Python linting with shared team config
 
-network:
-  allowedDomains:
-    - pypi.org
-    - files.pythonhosted.org
+caps:
+  network:
+    allow:
+      - pypi.org
+      - files.pythonhosted.org
 
 commands:
   install:
