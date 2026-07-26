@@ -11,10 +11,13 @@ Chrome をリモートデバッグ有効・全interfaceバインドで起動し�
   --remote-debugging-port=9222 \
   --remote-debugging-address=0.0.0.0 \
   --remote-allow-origins='*' \
+  --user-data-dir=/tmp/chrome-devtools-host-profile \
   --no-first-run
 ```
 
 `--remote-debugging-address` は必ず `0.0.0.0`。デフォルトの `127.0.0.1` だと Docker からの接続を拒否される。
+
+`--user-data-dir` も必須。普段使っている profile で Chrome が既に起動していると、このコマンドを叩いても singleton 制限に引っかかって既存インスタンスにウィンドウが1つ開くだけになり、remote debugging は有効化されない(デバッグ用フラグは新規プロセス起動時にしか反映されないため)。`/tmp` 配下などの専用ディレクトリを指定して別プロファイルとして起動することで、確実に新しいインスタンスを起動させる。
 
 ## インストール内容
 

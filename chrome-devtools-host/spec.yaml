@@ -16,10 +16,16 @@ agentContext: |
       --remote-debugging-port=9222 \
       --remote-debugging-address=0.0.0.0 \
       --remote-allow-origins='*' \
+      --user-data-dir=/tmp/chrome-devtools-host-profile \
       --no-first-run
 
   `--remote-debugging-address=0.0.0.0` is required — the default 127.0.0.1 rejects
-  connections coming from Docker.
+  connections coming from Docker. `--user-data-dir` pointing at a scratch directory is
+  also required — if Chrome is already running under the user's normal profile, this
+  command just opens a new window in that existing (singleton) instance and remote
+  debugging never actually gets enabled, since debugging flags only take effect when a
+  fresh instance starts. Using a separate profile forces a genuinely new instance to
+  launch (at the cost of not having the user's normal cookies/extensions there).
 
   What this kit already did:
   - Installed the official `chrome-devtools-mcp@claude-plugins-official` plugin
@@ -53,7 +59,10 @@ agentContext: |
      the sandbox.
   3. `curl -s http://localhost:9222/json/version` — should return Chrome's version JSON
      if both the bridge and the host Chrome are up. If it hangs or refuses, ask the
-     user to confirm Chrome is running on the host with the flags above.
+     user to confirm Chrome is running on the host with the flags above, including
+     `--user-data-dir`. Without it, if Chrome was already running under the user's
+     normal profile, the launch command silently no-ops into that existing instance
+     and remote debugging never turns on.
 
 caps:
   network:
