@@ -1,0 +1,81 @@
+schemaVersion: "2"
+kind: mixin
+name: chrome-devtools-host
+displayName: Chrome DevTools (Host Browser)
+description: Lets Claude Code control the Chrome browser running on the host machine via chrome-devtools-mcp, bridging the sandbox to the host's remote-debugging port
+
+agentContext: |
+  This sandbox is set up to control a Chrome browser running on the **host** machine
+  (not inside the sandbox) via chrome-devtools-mcp.
+
+  Prerequisite (host side, one-time per host restart): the user must launch Chrome on
+  the host with remote debugging bound to all interfaces:
+
+    /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+      --remote-debugging-port=9222 \
+      --remote-debugging-address=0.0.0.0 \
+      --remote-allow-origins='*' \
+      --no-first-run
+
+  `--remote-debugging-address=0.0.0.0` is required — the default 127.0.0.1 rejects
+  connections coming from Docker.
+
+  What this kit already did:
+  - Installed `socat` and `chrome-devtools-mcp@1.6.0` (global npm package).
+  - Registered an MCP server named `chrome-devtools-host` pointing at
+    `http://localhost:9222` via `--browser-url`, so it does NOT launch its own Chrome
+    inside the sandbox.
+  - Starts a background `socat` process on every sandbox boot that forwards
+    `localhost:9222` -> `host.docker.internal:9222`.
+
+  Why the socat bridge exists: Chrome's DevTools WebSocket endpoint rejects any
+  handshake whose `Host` header isn't `localhost:<port>` or an IP literal. Connecting
+  directly to `host.docker.internal:9222` sends `Host: host.docker.internal:9222`, so
+  Chrome refuses it. Routing through
+  `socat TCP-LISTEN:9222,fork,reuseaddr TCP:host.docker.internal:9222` makes the
+  request Chrome actually sees arrive with `Host: localhost:9222`, which it accepts.
+  Never point `--browser-url` at `host.docker.internal:9222` directly — always go
+  through `localhost:9222`.
+
+  If MCP tool calls time out or are refused, check in this order:
+  1. `pgrep -fa socat` — if empty, the bridge died (it does not survive a sandbox
+     restart on its own, which is why this kit re-launches it at every startup); restart
+     it manually with:
+     `socat TCP-LISTEN:9222,fork,reuseaddr TCP:host.docker.internal:9222 &`
+  2. `curl -s http://localhost:9222/json/version` — should return Chrome's version JSON
+     if both the bridge and the host Chrome are up. If it hangs or refuses, ask the
+     user to confirm Chrome is running on the host with the flags above.
+
+caps:
+  network:
+    allow:
+      # host.docker.internal:9222 access is granted under the "localhost:<port>"
+      # policy convention used for reaching host-bound services
+      - localhost:9222
+      # chrome-devtools-mcp npm package install/resolution
+      - registry.npmjs.org
+
+commands:
+  install:
+    - command: |
+        set -e
+        apt-get update -qq
+        apt-get install -y -qq socat
+      user: "0"
+      description: Install socat (used to bridge the sandbox to the host's Chrome DevTools port)
+    - command: |
+        npm install -g chrome-devtools-mcp@1.6.0
+      user: "1000"
+      description: Install chrome-devtools-mcp
+    - command: |
+        claude mcp add chrome-devtools-host --scope user -- npx chrome-devtools-mcp@1.6.0 --browser-url=http://localhost:9222
+      user: "1000"
+      description: Register the chrome-devtools-mcp MCP server pointed at the host's Chrome via the socat bridge
+  startup:
+    - command:
+        - bash
+        - -c
+        - "pgrep -f 'socat TCP-LISTEN:9222' >/dev/null 2>&1 || exec socat TCP-LISTEN:9222,fork,reuseaddr TCP:host.docker.internal:9222"
+      user: "1000"
+      background: true
+      description: Bridge localhost:9222 -> host Chrome DevTools port (dies on sandbox restart, so it must relaunch every startup)
