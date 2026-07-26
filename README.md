@@ -8,7 +8,7 @@ kit の仕様（schemaVersion、caps.network、commands など）については
 
 | kit | 概要 |
 | --- | --- |
-| [`sbx-kit-dev`](./sbx-kit-dev) | このモノレポの kit を検証するための `sbx` CLI をインストールする開発用ツール |
+| [`sbx-kit-dev`](./sbx-kit-dev) | このモノレポで kit を開発するためのツールをインストールするkit |
 | [`chrome-devtools-host`](./chrome-devtools-host) | ホストマシン上で動く Chrome を `chrome-devtools-mcp` 経由で操作できるようにする |
 | [`claude-documentation`](./claude-documentation) | Miro / Slack の公式プラグインと Cosense (Scrapbox) の skill・CLI を追加する |
 | [`datadog-claude`](./datadog-claude) | Datadog 調査用ツール一式（`pup` CLI、Datadog プラグイン、agent skills） |
