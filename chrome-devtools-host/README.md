@@ -22,7 +22,7 @@ Chrome をリモートデバッグ有効・全interfaceバインドで起動し�
 ## インストール内容
 
 1. **公式 chrome-devtools-mcp plugin** — `claude plugin marketplace add anthropics/claude-plugins-official` → `claude plugin install chrome-devtools-mcp@claude-plugins-official`
-2. **ホスト側の Chrome への接続設定**（`commands.startup`, `background: true`）— サンドボックス起動のたびに、plugin がホスト側の Chrome に接続するようパッチし、`localhost:9222 -> host.docker.internal:9222` の接続ブリッジが起動していなければ起動する(idempotent)
+2. **ホスト側の Chrome への接続設定**（`commands.startup`、2エントリ）— サンドボックス起動のたびに、①plugin がホスト側の Chrome に接続するようパッチし、②`localhost:9222 -> host.docker.internal:9222` の接続ブリッジ(`socat`、`background: true`)が起動していなければ起動する(いずれも idempotent)
 
 ## なぜ plugin.json をパッチするのか
 
