@@ -100,7 +100,13 @@ commands:
           if [ -n "$PJ" ] && ! grep -q -- '--browser-url=http://localhost:9222' "$PJ"; then
             jq '(.mcpServers["chrome-devtools"].args) |= (if index("--browser-url=http://localhost:9222") then . else . + ["--browser-url=http://localhost:9222"] end)' "$PJ" > "$PJ.tmp" && mv "$PJ.tmp" "$PJ"
           fi
-          pgrep -f 'socat TCP-LISTEN:9222' >/dev/null 2>&1 || exec socat TCP-LISTEN:9222,fork,reuseaddr TCP:host.docker.internal:9222
+      user: "1000"
+      description: Ensure the plugin points at the host bridge (survives plugin updates and cache resets)
+    - command:
+        - bash
+        - -c
+        - |
+          pgrep -x socat >/dev/null 2>&1 || exec socat TCP-LISTEN:9222,fork,reuseaddr TCP:host.docker.internal:9222
       user: "1000"
       background: true
-      description: Ensure the plugin points at the host bridge (survives plugin updates) and (re)launch the socat bridge (dies on sandbox restart)
+      description: (Re)launch the socat bridge to the host's Chrome (dies on sandbox restart, so it's relaunched at every startup)
