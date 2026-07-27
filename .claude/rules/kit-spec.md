@@ -12,7 +12,7 @@ alwaysApply: false
 
 Docker Sandboxes の kit 仕様は公式ドキュメントに記載されています：
 
-- Kit の概要・種類（mixin/sandbox）・フィールド一覧: https://docs.docker.com/ai/sandboxes/customize/kits/
+- Kit の概要・種類（mixin/sandbox）・フィールド一覧: https://github.com/docker/sbx-kits-contrib/blob/main/spec/SPEC-v2.md
 
 ## context7 MCP サーバ
 
