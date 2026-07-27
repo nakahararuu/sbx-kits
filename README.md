@@ -22,22 +22,36 @@ kit の仕様（schemaVersion、caps.network、commands など）については
 
 ### 新規サンドボックスを kit 付きで起動する
 
+このリポジトリをクローン済みならローカルパスを指定します。
+
 ```bash
 sbx run <agent> --kit /path/to/sbx-kits/<kit-name>/
+```
+
+クローンせずに、git リポジトリのディレクトリを直接指定することもできます。
+
+```bash
+sbx run <agent> --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=<kit-name>"
 ```
 
 例: `datadog-claude` kit を付けて Claude Code サンドボックスを起動する
 
 ```bash
-sbx run claude --kit /path/to/sbx-kits/datadog-claude/
+sbx run claude --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=datadog-claude"
 ```
 
 複数の kit を同時に指定することもできます。
 
 ```bash
 sbx run claude \
-  --kit /path/to/sbx-kits/sbx-kit-dev/ \
-  --kit /path/to/sbx-kits/chrome-devtools-host/
+  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=sbx-kit-dev" \
+  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=chrome-devtools-host"
+```
+
+### 既存のサンドボックスに kit を追加する
+
+```bash
+sbx kit add <sandbox名> "git+https://github.com/nakahararuu/sbx-kits.git#dir=<kit-name>"
 ```
 
 ### kit を編集した場合は validate する
