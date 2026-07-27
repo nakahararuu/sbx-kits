@@ -106,7 +106,7 @@ commands:
         - bash
         - -c
         - |
-          pgrep -f 'socat TCP-LISTEN:9222' >/dev/null 2>&1 || exec socat TCP-LISTEN:9222,fork,reuseaddr TCP:host.docker.internal:9222
+          pgrep -x socat >/dev/null 2>&1 || exec socat TCP-LISTEN:9222,fork,reuseaddr TCP:host.docker.internal:9222
       user: "1000"
       background: true
       description: (Re)launch the socat bridge to the host's Chrome (dies on sandbox restart, so it's relaunched at every startup)
