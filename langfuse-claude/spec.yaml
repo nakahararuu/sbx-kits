@@ -1,0 +1,31 @@
+schemaVersion: "2"
+kind: mixin
+name: langfuse-claude
+displayName: Langfuse for Claude Code
+description: Adds the Langfuse skill plugin from the official Anthropic marketplace and installs langfuse-cli
+
+caps:
+  network:
+    allow:
+      # marketplace / plugin source install (GitHub)
+      - github.com
+      - api.github.com
+      # langfuse-cli install
+      - registry.npmjs.org
+      # Langfuse Cloud API / docs (EU cloud + docs site share the apex + single-label subdomains)
+      - langfuse.com
+      - "*.langfuse.com"
+      # Langfuse Cloud API (US region; two-label subdomain, needs an explicit entry)
+      - us.cloud.langfuse.com
+
+commands:
+  install:
+    - command: |
+        claude plugin marketplace add anthropics/claude-plugins-official
+        claude plugin install langfuse@claude-plugins-official
+      user: "1000"
+      description: Install the Langfuse skill plugin from the official Anthropic marketplace
+    - command: |
+        npm install -g langfuse-cli
+      user: "0"
+      description: Install langfuse-cli (companion CLI the skill uses for API access)
