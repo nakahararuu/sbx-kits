@@ -22,13 +22,7 @@ kit の仕様（schemaVersion、caps.network、commands など）については
 
 ### 新規サンドボックスを kit 付きで起動する
 
-このリポジトリをクローン済みならローカルパスを指定します。
-
-```bash
-sbx run <agent> --kit /path/to/sbx-kits/<kit-name>/
-```
-
-クローンせずに、git リポジトリのディレクトリを直接指定することもできます。
+git リポジトリのディレクトリを直接指定できるので、クローンは不要です。
 
 ```bash
 sbx run <agent> --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=<kit-name>"
