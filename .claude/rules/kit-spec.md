@@ -14,20 +14,6 @@ Docker Sandboxes の kit 仕様は公式ドキュメントに記載されてい�
 
 - Kit の概要・種類（mixin/sandbox）・フィールド一覧: https://github.com/docker/sbx-kits-contrib/blob/main/spec/SPEC-v2.md
 
-## context7 MCP サーバ
-
-このプロジェクトには context7 MCP サーバが設定されています。Docker ドキュメントのライブラリとして登録されており、kit に関する情報も取得できます。
-
-```
-# ライブラリ ID の解決
-mcp__plugin_context7_context7__resolve-library-id: "docker sandboxes"
-
-# ドキュメント取得
-mcp__plugin_context7_context7__query-docs: "kit spec.yaml fields"
-```
-
-公式ドキュメントの URL が手元にない場合や、特定のフィールドについて素早く確認したい場合に有効です。
-
 ## 落とし穴: network policy
 
 sandbox はデフォルトで送信通信を deny するため、kit が動かすツールが通信する先はすべて `network.allowedDomains` に明記する必要があります。公式ドキュメントには載っていないが、実際の kit 作成で頻繁にハマるポイントを以下にまとめます。
