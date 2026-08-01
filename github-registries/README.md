@@ -4,19 +4,15 @@ GitHub Packages（npm・Maven/Gradle）と GitHub Container Registry（ghcr.io�
 
 ## インストール内容
 
-- `npm.pkg.github.com`・`maven.pkg.github.com`・`ghcr.io` 宛の通信に `GITHUB_TOKEN` を注入するよう `credentials`/`caps.network` を設定
-- `~/.m2/settings.xml` に `id: github` の `<server>` エントリを設定
-  （GitHub公式のMaven/Gradleドキュメントが `pom.xml`/`build.gradle` 側で指定するように案内している `id` と一致。`files/home/.m2/settings.xml` として静的ファイルで配置するため、既存の `settings.xml` があれば上書き）
+`npm.pkg.github.com`・`maven.pkg.github.com`・`ghcr.io` 宛の通信に `GITHUB_TOKEN` を注入するよう `credentials`/`caps.network` を設定するだけです。`.npmrc`・`.docker/config.json`・`.m2/settings.xml` などのローカル設定ファイルはこの kit では一切書き込みません。
 
-`.npmrc` や `.docker/config.json` はこの kit では書き込みません。npm/Docker には、GitHub Packages/GHCR を使うために必要な `${GITHUB_TOKEN}` 参照付きの `.npmrc`／`docker login` のような、プロジェクト側で通常すでに用意されているはずの仕組みに乗る前提です（Mavenだけは同等の環境変数駆動の慣習が無いため、この kit が `settings.xml` を用意します）。この kit が用意するのは、その仕組みが実際に認証ヘッダを送った時に載せる実トークンの部分だけです。
-
-セットアップ済みのプロジェクトでは、サンドボックス内で追加のログイン操作なしに以下が動きます。
+このkitの責務は「ログインしようとした時に認証情報を差し替える」ことだけです。GitHub Packages/GHCR を使うプロジェクトは、`${GITHUB_TOKEN}` 参照付きの `.npmrc`・`docker login`・`settings.xml` の `<server>` エントリなど、認証ヘッダ付きリクエストを送る仕組みをすでに用意しているはずという前提に立っています。プロジェクト側でログインステップ（`docker login` など）が必要な場合は、この kit を入れても引き続きそのステップの実行が必要です — kit が変えるのは、そこに渡す値が実トークンでなくてよくなる、という点だけです。
 
 ```bash
 npm install @your-org/some-package   # プロジェクトの .npmrc が npm.pkg.github.com を参照していれば
 docker pull ghcr.io/your-org/your-image:latest
 docker push ghcr.io/your-org/your-image:latest
-mvn deploy   # pom.xml の <repository><id>github</id> と対応
+mvn deploy   # プロジェクトの settings.xml に <server><id>github</id> があれば
 ```
 
 ## 認証情報の流れ
@@ -49,7 +45,7 @@ sbx secret set -g github -t "$GITHUB_TOKEN"
 
 ## 対応していないGitHub Packagesのエコシステム
 
-npm・Maven/Gradle・コンテナ（ghcr.io）のみ対応しています。NuGet / RubyGems などが必要な場合は、`spec.yaml` の `caps.network.allow` と `credentials[0].apiKey.inject` に該当ホスト（例: `nuget.pkg.github.com`）を追加してください。ローカル設定ファイルは、そのエコシステムに環境変数駆動の慣習が無い場合（本kitのMavenのように）だけ追加すれば十分です。`files/home/...` 配下の静的ファイルにするのがおすすめです（[spec §5.8](https://github.com/docker/sbx-kits-contrib/blob/main/spec/SPEC-v2.md#58-files-directory)）。`${GITHUB_TOKEN}` のようなプレースホルダも静的ファイルにそのまま書けます（sbxではなく、それを読むツール側が自分のタイミングで展開するため）。`commands.initFiles` の `content` は `${WORKDIR}` 以外のプレースホルダを受け付けないため、`${GITHUB_TOKEN}` を埋め込むファイルは `commands.initFiles` では書けません。
+npm・Maven/Gradle・コンテナ（ghcr.io）のみ対応しています。NuGet / RubyGems などが必要な場合は、`spec.yaml` の `caps.network.allow` と `credentials[0].apiKey.inject` に該当ホスト（例: `nuget.pkg.github.com`）を追加してください。
 
 ## 使い方
 

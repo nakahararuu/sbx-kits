@@ -6,22 +6,19 @@ description: Injects a GITHUB_TOKEN credential into requests to the GitHub Packa
 
 agentContext: |
   This kit configures authentication for GitHub-hosted package registries:
+  requests to `npm.pkg.github.com`, `maven.pkg.github.com`, and `ghcr.io`
+  get a `github` credential injected.
 
-  - GitHub Packages (npm): requests to `npm.pkg.github.com` get the
-    credential injected. This kit does NOT write `.npmrc` — a project that
-    needs npm packages from GitHub Packages already has to be configured to
-    send an `_authToken` request there in the first place (that's what
-    determines whether a client even attempts an authenticated request);
-    this kit only handles supplying the actual token value once it does.
-  - GitHub Packages (Maven/Gradle): `~/.m2/settings.xml` gets a `<server
-    id="github">` entry, matching the `id` GitHub's own Maven/Gradle docs
-    tell you to use in your project's `pom.xml`/`build.gradle`. Shipped as a
-    static file (`files/home/.m2/settings.xml`, see spec §5.8). Unlike npm,
-    Maven has no equivalent env-var-driven convention a project could
-    already rely on, so this kit provides the file directly.
-  - GitHub Container Registry: requests to `ghcr.io` get the credential
-    injected. This kit does NOT write `.docker/config.json` or run
-    `docker login` — same reasoning as npm above.
+  This kit does NOT write `.npmrc`, `.docker/config.json`, `.m2/settings.xml`,
+  or run any login step. A project that needs this kit already has to be
+  configured to send an authenticated request to these registries in the
+  first place — that project-side config is what determines *whether* a
+  client even attempts an authenticated request; this kit's job is only to
+  supply the real token once it does, swapping in the actual credential for
+  whatever placeholder the client sent. If a project's own setup requires
+  an explicit login step (e.g. `docker login`), that step still needs to
+  run — this kit doesn't remove it, it just means the value passed to that
+  login step doesn't need to be a real token.
 
   How the credential actually flows:
   - The kit declares a `github` credential (`credentials[].service: github`)
@@ -44,10 +41,7 @@ agentContext: |
 
   This kit covers npm, Maven/Gradle, and container images. To add another
   registry-shaped ecosystem (NuGet, RubyGems, ...) add its registry host to
-  both `caps.network.allow` and `credentials[0].apiKey.inject`. Only add a
-  local config file (a static file under `files/home/...`, see spec §5.8)
-  if the ecosystem has no existing env-var-driven convention a project
-  could already rely on — as with Maven above.
+  both `caps.network.allow` and `credentials[0].apiKey.inject`.
 
 credentials:
   - service: github
