@@ -27,12 +27,16 @@ agentContext: |
     both steps run as `startup` commands (idempotent — safe to re-run) rather than
     once-only `install` commands.
 
-  Known dead end (do not retry): `docker run --privileged tonistiigi/binfmt --install
-  all` reports success but does not actually enable emulation in this sandbox — the
-  registration it performs does not take effect here (Docker Engine here does not
-  share binfmt_misc state with a privileged container in the way that approach
-  assumes). Registering directly against the mounted `binfmt_misc` filesystem, as
-  this kit does, is the approach that actually works.
+  Known pitfall: `docker run --privileged tonistiigi/binfmt --install all` prints
+  "OK" for every arch but silently does nothing if `binfmt_misc` isn't already
+  mounted at `/proc/sys/fs/binfmt_misc` first — without `--pid=host`, the container
+  mounts its own private `binfmt_misc` instance inside its own throwaway mount
+  namespace and registers there, so the registration disappears the moment the
+  container exits. (It does work correctly if binfmt_misc is mounted beforehand, but
+  that means it can't bootstrap a fresh sandbox on its own, and it additionally
+  requires pulling an extra image.) This kit avoids the whole issue by registering
+  qemu-x86_64 directly against the `binfmt_misc` filesystem it just mounted, with no
+  extra image pull required.
 
   Troubleshooting:
   - `exec format error` when running an amd64 container means the registration is

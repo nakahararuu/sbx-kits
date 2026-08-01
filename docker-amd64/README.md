@@ -26,7 +26,9 @@ docker run --rm --platform linux/amd64 alpine uname -m
 
 ## 既知の落とし穴
 
-`docker run --privileged tonistiigi/binfmt --install all`（buildx が内部で使うイメージ）は、成功したように見えるログを出すが、このサンドボックスでは実際には emulation を有効化しない。`binfmt_misc` に直接 register する本 kit の方式のみが動作する。
+`docker run --privileged tonistiigi/binfmt --install all`（buildx が内部で使うイメージ）は、全アーキテクチャ分 "OK" と出るが、`binfmt_misc` が事前にマウントされていないと実際には何も残らない。`--pid=host` を付けない限り、コンテナは自分専用の使い捨てマウント名前空間内に独自の `binfmt_misc` インスタンスを作って register してしまい、コンテナ終了と同時にその登録が消えるため。
+
+先に `binfmt_misc` をマウントしておけばこのイメージでも正しく動作するが、それでも素のサンドボックス（未マウント状態）を単体でブートストラップすることはできず、追加のイメージ pull も必要になる。本 kit はこの問題を避けるため、自分でマウントした `binfmt_misc` に対して直接 `qemu-x86_64` を register する方式を採っている（追加イメージ不要）。
 
 ## 動作確認済み環境
 
