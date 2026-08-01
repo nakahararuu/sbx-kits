@@ -49,3 +49,36 @@ sbx kit add <sandbox名> /path/to/kit/ # 既存サンドボックスに kit を�
 allowlist が不足しているドメインへの通信は、サンドボックス内で `commands.install` 実行中に HTTP 403 で拒否されます。エラーメッセージに出てくるホスト名を `network.allowedDomains` に追記し、`sbx kit add` などで再適用して再検証してください。
 
 参考実装: `datadog-claude/spec.yaml`、`claude-documentation/spec.yaml`、`nakahararuu-claude-plugins/spec.yaml` の `network.allowedDomains` を参照。
+
+## 落とし穴: credentials（トークン注入）
+
+APIキーやトークンをコンテナ内に注入する kit を作るときの設計:
+
+### 1. kit は「何が必要か」だけを宣言する。「どこにあるか」は書かない
+
+`credentials` ブロックは以下のように、サービス名・注入先ドメイン・スキームだけを宣言します。
+
+```yaml
+credentials:
+  - service: github
+    apiKey:
+      name: GITHUB_TOKEN
+      proxyManaged: true
+      inject:
+        - domain: npm.pkg.github.com
+          scheme: bearer
+```
+
+実トークンをどのホスト環境変数・ファイルから読むかは kit に書けません（そもそもそのためのフィールドが無い）。ユーザー側の `~/.config/sbx/credentials.yaml`（bindings）または `sbx secret set` で解決されます。詳細: https://github.com/docker/sbx-kits-contrib/blob/main/skills/kit-author/topics/bindings.md
+
+「ホストの環境変数 `FOO_TOKEN` から取る」という要件は、kit の `spec.yaml` にはロジックが書けないので、README で `sbx secret set -g <service> -t "$FOO_TOKEN"` を案内する形に落とし込む。
+
+### 2. コンテナ内のトークン環境変数は実値ではない
+
+`apiKey.proxyManaged: true` を設定すると、コンテナ内の該当環境変数（例 `GITHUB_TOKEN`）には常にリテラル文字列 `proxy-managed` が入ります。実トークンはサンドボックス外のプロキシが、宣言した `inject[].domain` 宛のリクエストを流す瞬間に差し替えるため、コンテナのファイルシステムやプロセス一覧には一切現れません。トークンを埋め込む設定ファイル（`.npmrc` など）は、`${GITHUB_TOKEN}` のようなプレースホルダを書いておいて、ツール自身（npm 等）に実行時展開させる前提で作る。
+
+### 3. `commands.initFiles` の `content` は `${WORKDIR}` 以外のプレースホルダを受け付けない
+
+`${GITHUB_TOKEN}` のようなトークン用プレースホルダを埋め込んだファイルを `commands.initFiles` で書こうとすると、`sbx kit validate` で `unsupported placeholder` エラーになります。トークンを含むファイルは `commands.install` のシェルコマンド（`cat`/`echo`/`jq` など）で書き出すこと。
+
+参考実装: `github-registries/spec.yaml`。
