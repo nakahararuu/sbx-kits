@@ -19,28 +19,35 @@ caps:
       - us.cloud.langfuse.com
 
 credentials:
-  # Langfuse auth is HTTP Basic (publicKey:secretKey), so both values are
-  # independently dynamic per user/project — the credentials.apiKey.inject
-  # scheme:basic sugar can't express that (it takes one dynamic secret plus
-  # a *static* username), so neither entry is proxy-managed/masked here.
-  # Declaring them still gets the approval-flow prompt (bind a host env var
-  # if unset) instead of requiring a manual `sbx secret set-custom` dance.
-  - service: langfuse-public-key
-    description: "Langfuse public key (not sensitive — safe to expose, e.g. Langfuse's own client-side SDK usage)"
+  # Langfuse auth is HTTP Basic. Rather than handing the CLI raw
+  # publicKey/secretKey env vars, get the single combined Basic-auth value
+  # (base64 of "publicKey:secretKey") from the host and let the proxy set
+  # the Authorization header directly — the real secret never enters the
+  # sandbox. See https://github.com/docker/sbx-releases/issues/292 (no
+  # built-in base64 filter yet, so the bound value must be pre-encoded).
+  - service: langfuse
+    description: 'Langfuse HTTP Basic Auth credential: base64("publicKey:secretKey")'
     required: true
     apiKey:
-      name: LANGFUSE_PUBLIC_KEY
+      name: LANGFUSE_BASIC_AUTH
+      proxyManaged: true
       inject:
         - domain: cloud.langfuse.com
+          header: Authorization
+          format: "Basic %s"
         - domain: us.cloud.langfuse.com
-  - service: langfuse-secret-key
-    description: "Langfuse secret key"
-    required: true
-    apiKey:
-      name: LANGFUSE_SECRET_KEY
-      inject:
-        - domain: cloud.langfuse.com
-        - domain: us.cloud.langfuse.com
+          header: Authorization
+          format: "Basic %s"
+
+environment:
+  variables:
+    # langfuse-cli builds its own (throwaway) Basic Auth header from these at
+    # startup — they just need to be non-empty so the CLI doesn't refuse to
+    # run. The proxy overwrites the real Authorization header for
+    # cloud.langfuse.com / us.cloud.langfuse.com using the `langfuse`
+    # credential above, so these values never reach Langfuse.
+    LANGFUSE_PUBLIC_KEY: "pk-lf-proxy-managed"
+    LANGFUSE_SECRET_KEY: "sk-lf-proxy-managed"
 
 commands:
   install:

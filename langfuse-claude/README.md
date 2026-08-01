@@ -20,26 +20,26 @@ LANGFUSE_HOST=https://cloud.langfuse.com   # 省略時のデフォルト。US cl
 
 （`LANGFUSE_BASE_URL` も同義でサポートされるが、`langfuse-cli` が実際に読むのは `LANGFUSE_HOST`。）
 
-`LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` はこの kit の `spec.yaml` の `credentials` ブロックで宣言している（[kit-author: bindings](https://github.com/docker/sbx-kits-contrib/blob/main/skills/kit-author/topics/bindings.md) 参照）。ホストの `~/.config/sbx/credentials.yaml` に `langfuse-public-key` / `langfuse-secret-key` の binding が無い状態でこの kit を使うと、サンドボックス作成時に対話的に「どの環境変数 / ファイルから値を読むか」を聞かれ、一度答えれば以降は自動解決される。事前に手動でコマンドを叩いておく必要はない。binding を先に自分で用意したい場合は次のように書く。
+Langfuse の認証は publicKey/secretKey を組み合わせた HTTP Basic。この kit は `spec.yaml` の `credentials` ブロックで、2つの生キーではなく **その組み合わせ済みの Basic 認証値**（`base64("publicKey:secretKey")`）を1つの secret（service: `langfuse`）として要求する（[kit-author: bindings](https://github.com/docker/sbx-kits-contrib/blob/main/skills/kit-author/topics/bindings.md) 参照）。この値は `proxyManaged: true` で、`Authorization: Basic %s` として `cloud.langfuse.com` / `us.cloud.langfuse.com` 宛のリクエストにプロキシが直接セットする。実値はサンドボックス内には一切入らない。
+
+ホストの `~/.config/sbx/credentials.yaml` に `langfuse` の binding が無い状態でこの kit を使うと、サンドボックス作成時に対話的に「どの環境変数 / ファイルから値を読むか」を聞かれ、一度答えれば以降は自動解決される。binding を先に自分で用意したい場合は次のように書く（値は事前に base64 エンコードしておくこと。`sbx` に base64 エンコード用の `filter` はまだ無い — [docker/sbx-releases#292](https://github.com/docker/sbx-releases/issues/292) 参照）。
+
+```bash
+echo -n "$LANGFUSE_PUBLIC_KEY:$LANGFUSE_SECRET_KEY" | base64
+```
 
 ```yaml
 # ~/.config/sbx/credentials.yaml
 bindings:
-  langfuse-public-key:
+  langfuse:
     discovery:
-      - env: [LANGFUSE_PUBLIC_KEY]
-    allowedDomains:
-      - cloud.langfuse.com
-      - us.cloud.langfuse.com
-  langfuse-secret-key:
-    discovery:
-      - env: [LANGFUSE_SECRET_KEY]
+      - env: [LANGFUSE_BASIC_AUTH]   # base64("publicKey:secretKey") を入れておく
     allowedDomains:
       - cloud.langfuse.com
       - us.cloud.langfuse.com
 ```
 
-Langfuse の認証は publicKey/secretKey を組み合わせた HTTP Basic で、両方ともユーザー/プロジェクトごとに動的な値のため、`credentials.apiKey.inject` の `scheme: basic` シュガー（動的な値1つ + 固定 `username` の組み合わせ用）では表現できない。そのため両エントリともプロキシ側でのマスク（`proxyManaged: true`）は使わず、実値がそのままサンドボックス内の環境変数に入る（`langfuse-cli` 自身がその2値からBasic認証ヘッダを組み立てる）。`credentials` ブロックを使う主な利点は値の秘匿ではなく、必要な認証情報を kit のメタデータとして宣言し、未設定なら対話的に補完できる点。なお `LANGFUSE_PUBLIC_KEY` は Langfuse 公式ドキュメント上も非秘匿（クライアントサイドでの利用を想定）と明記されている値。
+`langfuse-cli` 自身は `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` の2変数からBasic認証ヘッダを組み立てる作りなので、CLIが起動時に「未設定」で弾かないよう、spec.yaml の `environment.variables` にダミー値（`pk-lf-proxy-managed` / `sk-lf-proxy-managed`）を静的に設定している。CLIがこの2値から組み立てるヘッダの中身はどうであれ、実際に Langfuse Cloud へ送られる時点でプロキシが `Authorization` ヘッダを上記の実値で上書きするため、ダミー値が外部に漏れることはない。
 
 `LANGFUSE_HOST` は `credentials` の対象ではない（通信の宛先そのものであり、注入対象の値ではないため）。デフォルトの `https://cloud.langfuse.com` で問題なければ何もする必要はない。US cloud やセルフホストを使う場合は、サンドボックス内で `export LANGFUSE_HOST=...` するか、`.env` ファイル（`langfuse --env .env api ...`）で指定する。セルフホストの場合は宛先ホストが `network.allow` にも入っている必要があるため、この kit をフォークして該当ホストを追加すること。
 
