@@ -56,7 +56,7 @@ APIキーやトークンをコンテナ内に注入する kit を作るときの
 
 ### 1. kit は「何が必要か」だけを宣言する。「どこにあるか」は書かない
 
-`credentials` ブロックは以下のように、サービス名・注入先ドメイン・スキームだけを宣言します。
+`credentials` ブロックは以下のように、サービス名・注入先ドメイン・スキームだけを宣言します。実トークンをどのホスト環境変数・ファイルから読むかは kit に書けません。解決の仕組み（bindings / `sbx secret set`）は https://github.com/docker/sbx-kits-contrib/blob/main/skills/kit-author/topics/bindings.md を参照してください。
 
 ```yaml
 credentials:
@@ -68,8 +68,6 @@ credentials:
         - domain: npm.pkg.github.com
           scheme: bearer
 ```
-
-実トークンをどのホスト環境変数・ファイルから読むかは kit に書けません（そもそもそのためのフィールドが無い）。ユーザー側の `~/.config/sbx/credentials.yaml`（bindings）または `sbx secret set` で解決されます。詳細: https://github.com/docker/sbx-kits-contrib/blob/main/skills/kit-author/topics/bindings.md
 
 「ホストの環境変数 `FOO_TOKEN` から取る」という要件は、kit の `spec.yaml` にはロジックが書けないので、README で `sbx secret set -g <service> -t "$FOO_TOKEN"` を案内する形に落とし込む。
 
