@@ -2,26 +2,48 @@ schemaVersion: "2"
 kind: mixin
 name: github-registries
 displayName: GitHub Packages / GHCR Auth
-description: Injects a GITHUB_TOKEN credential into requests to the GitHub Packages npm registry and GitHub Container Registry (ghcr.io), and configures npm/Docker to use it
+description: Injects a GITHUB_TOKEN credential into requests to the GitHub Packages npm/Maven registries, GitHub Container Registry (ghcr.io), and git-over-HTTPS access to github.com, and configures npm/Maven/Docker/git to use it
 
 agentContext: |
-  This kit configures authentication for two GitHub-hosted registries:
+  This kit configures authentication for GitHub-hosted package registries
+  plus generic git-over-HTTPS access to github.com:
 
   - GitHub Packages (npm): `~/.npmrc` gets a
     `//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}` line, so any
     `npm install`/`npm publish` against a `npm.pkg.github.com` scope works
     without further setup.
+  - GitHub Packages (Maven/Gradle): `~/.m2/settings.xml` gets a `<server
+    id="github">` entry, matching the `id` GitHub's own Maven/Gradle docs
+    tell you to use in your project's `pom.xml`/`build.gradle`.
   - GitHub Container Registry: `~/.docker/config.json` gets a `ghcr.io` auth
     entry, so `docker pull`/`docker push ghcr.io/...` works without an
     explicit `docker login`.
+  - git-over-HTTPS to github.com: a global git credential helper is
+    configured, so `git clone`/`fetch`/`push` against any `https://github.com/...`
+    URL is authenticated. This is also what makes **Go modules** work:
+    `go get`/`go mod download` fetch private modules via `git` once
+    `GOPRIVATE` (or `GOFLAGS=-insecure`/`GONOSUMCHECK`, project-dependent) is
+    set to route the module's import path to direct VCS access instead of
+    the public Go module proxy — this kit cannot set `GOPRIVATE` itself
+    since it doesn't know your module path, so set it in your project/shell,
+    e.g. `go env -w GOPRIVATE=github.com/<your-org>/*`.
+
+  Ecosystems GitHub Packages does **not** have, despite the name suggesting
+  otherwise:
+  - **Python**: GitHub Packages has never had a PyPI-compatible registry. If
+    you need private Python code from GitHub, install straight from the repo
+    instead — the git-over-HTTPS auth this kit sets up covers that too:
+    `pip install git+https://github.com/<org>/<repo>`.
+  - **Go**: there is no `go.pkg.github.com`; see the git-over-HTTPS bullet
+    above for how private Go modules actually get fetched from GitHub.
 
   How the credential actually flows:
   - The kit declares a `github` credential (`credentials[].service: github`)
-    that the sandbox proxy injects into outbound requests to
-    `npm.pkg.github.com` and `ghcr.io` — the container-side `GITHUB_TOKEN` env
-    var only ever holds the literal placeholder `proxy-managed`; the real
-    token is substituted by the proxy on the wire and never touches the
-    sandbox filesystem or process list.
+    that the sandbox proxy injects into outbound requests to the registry
+    domains and `github.com` — the container-side `GITHUB_TOKEN` env var only
+    ever holds the literal placeholder `proxy-managed`; the real token is
+    substituted by the proxy on the wire and never touches the sandbox
+    filesystem or process list.
   - This kit does NOT declare where the real token comes from — that is
     host-side configuration, deliberately kept out of the kit (see the
     "Credential binding" section of the README). The simplest setup is:
@@ -34,24 +56,31 @@ agentContext: |
     credential injected) because `docker pull`/`push` against `ghcr.io`
     redirects blob transfers to that host.
 
-  This kit only covers the npm and container ecosystems of GitHub Packages.
-  To add another ecosystem (Maven, NuGet, RubyGems, ...) add its registry
-  host to both `caps.network.allow` and `credentials[0].apiKey.inject`, plus
-  a `commands.install` step that writes that ecosystem's config file
-  referencing `${GITHUB_TOKEN}` (note: `commands.initFiles` content is
-  restricted to the `${WORKDIR}` placeholder, so any file that needs
-  `${GITHUB_TOKEN}` inside it must be written by a shell command instead).
+  This kit covers npm, Maven/Gradle, container images, and generic
+  git-over-HTTPS. To add another registry-shaped ecosystem (NuGet,
+  RubyGems, ...) add its registry host to both `caps.network.allow` and
+  `credentials[0].apiKey.inject`, plus a `commands.install` step that writes
+  that ecosystem's config file referencing `${GITHUB_TOKEN}` (note:
+  `commands.initFiles` content is restricted to the `${WORKDIR}`
+  placeholder, so any file that needs `${GITHUB_TOKEN}` inside it must be
+  written by a shell command instead).
 
 credentials:
   - service: github
-    description: "GitHub token for GitHub Packages (npm) and GHCR"
+    description: "GitHub token for GitHub Packages (npm, Maven/Gradle), GHCR, and git-over-HTTPS access to github.com (covers Go modules and installing from git URLs)"
     apiKey:
       name: GITHUB_TOKEN
       proxyManaged: true
       inject:
         - domain: npm.pkg.github.com
           scheme: bearer
+        - domain: maven.pkg.github.com
+          scheme: basic
+          username: x-access-token
         - domain: ghcr.io
+          scheme: basic
+          username: x-access-token
+        - domain: github.com
           scheme: basic
           username: x-access-token
 
@@ -59,10 +88,12 @@ caps:
   network:
     allow:
       - npm.pkg.github.com
+      - maven.pkg.github.com
       - ghcr.io
       # blob storage ghcr.io redirects to for image layers; no credential
       # is injected here, pulls/pushes only need it reachable
       - pkg-containers.githubusercontent.com
+      - github.com
 
 commands:
   install:
@@ -90,3 +121,25 @@ commands:
         grep -qxF "$LINE" "$HOME/.npmrc" || echo "$LINE" >> "$HOME/.npmrc"
       user: "1000"
       description: Configure npm auth for the GitHub Packages registry (appends to any existing .npmrc)
+    - command: |
+        set -e
+        mkdir -p "$HOME/.m2"
+        cat > "$HOME/.m2/settings.xml" <<'XML'
+        <settings>
+          <servers>
+            <server>
+              <id>github</id>
+              <username>x-access-token</username>
+              <password>${env.GITHUB_TOKEN}</password>
+            </server>
+          </servers>
+        </settings>
+        XML
+      user: "1000"
+      description: Configure Maven/Gradle auth for the GitHub Packages registry (server id "github" in settings.xml, matches GitHub's own docs; overwrites any existing settings.xml)
+    - command: |
+        set -e
+        git config --global credential.https://github.com.helper \
+          '!f() { echo "username=x-access-token"; echo "password=$GITHUB_TOKEN"; }; f'
+      user: "1000"
+      description: Configure a git credential helper for https://github.com (covers git clone/fetch/push, Go modules via GOPRIVATE, pip install git+https://..., etc.)
