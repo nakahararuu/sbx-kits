@@ -1,0 +1,92 @@
+schemaVersion: "2"
+kind: mixin
+name: github-registries
+displayName: GitHub Packages / GHCR Auth
+description: Injects a GITHUB_TOKEN credential into requests to the GitHub Packages npm registry and GitHub Container Registry (ghcr.io), and configures npm/Docker to use it
+
+agentContext: |
+  This kit configures authentication for two GitHub-hosted registries:
+
+  - GitHub Packages (npm): `~/.npmrc` gets a
+    `//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}` line, so any
+    `npm install`/`npm publish` against a `npm.pkg.github.com` scope works
+    without further setup.
+  - GitHub Container Registry: `~/.docker/config.json` gets a `ghcr.io` auth
+    entry, so `docker pull`/`docker push ghcr.io/...` works without an
+    explicit `docker login`.
+
+  How the credential actually flows:
+  - The kit declares a `github` credential (`credentials[].service: github`)
+    that the sandbox proxy injects into outbound requests to
+    `npm.pkg.github.com` and `ghcr.io` — the container-side `GITHUB_TOKEN` env
+    var only ever holds the literal placeholder `proxy-managed`; the real
+    token is substituted by the proxy on the wire and never touches the
+    sandbox filesystem or process list.
+  - This kit does NOT declare where the real token comes from — that is
+    host-side configuration, deliberately kept out of the kit (see the
+    "Credential binding" section of the README). The simplest setup is:
+
+      sbx secret set -g github -t "$GITHUB_TOKEN"
+
+    which reads the *host's* GITHUB_TOKEN once and stores it in the global
+    secret store.
+  - `pkg-containers.githubusercontent.com` is allow-listed (network only, no
+    credential injected) because `docker pull`/`push` against `ghcr.io`
+    redirects blob transfers to that host.
+
+  This kit only covers the npm and container ecosystems of GitHub Packages.
+  To add another ecosystem (Maven, NuGet, RubyGems, ...) add its registry
+  host to both `caps.network.allow` and `credentials[0].apiKey.inject`, plus
+  a `commands.install` step that writes that ecosystem's config file
+  referencing `${GITHUB_TOKEN}` (note: `commands.initFiles` content is
+  restricted to the `${WORKDIR}` placeholder, so any file that needs
+  `${GITHUB_TOKEN}` inside it must be written by a shell command instead).
+
+credentials:
+  - service: github
+    description: "GitHub token for GitHub Packages (npm) and GHCR"
+    apiKey:
+      name: GITHUB_TOKEN
+      proxyManaged: true
+      inject:
+        - domain: npm.pkg.github.com
+          scheme: bearer
+        - domain: ghcr.io
+          scheme: basic
+          username: x-access-token
+
+caps:
+  network:
+    allow:
+      - npm.pkg.github.com
+      - ghcr.io
+      # blob storage ghcr.io redirects to for image layers; no credential
+      # is injected here, pulls/pushes only need it reachable
+      - pkg-containers.githubusercontent.com
+
+commands:
+  install:
+    - command: |
+        command -v jq >/dev/null || (apt-get update -qq && apt-get install -y -qq jq)
+      user: "0"
+      description: Ensure jq is available
+    - command: |
+        set -e
+        mkdir -p "$HOME/.docker"
+        AUTH=$(printf '%s' "x-access-token:${GITHUB_TOKEN}" | base64 -w0)
+        CONFIG="$HOME/.docker/config.json"
+        if [ -f "$CONFIG" ]; then
+          jq --arg auth "$AUTH" '.auths["ghcr.io"] = {"auth": $auth}' "$CONFIG" > "$CONFIG.tmp"
+          mv "$CONFIG.tmp" "$CONFIG"
+        else
+          jq -n --arg auth "$AUTH" '{auths: {"ghcr.io": {"auth": $auth}}}' > "$CONFIG"
+        fi
+      user: "1000"
+      description: Configure Docker auth for ghcr.io (merges into any existing config.json)
+    - command: |
+        set -e
+        LINE='//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}'
+        touch "$HOME/.npmrc"
+        grep -qxF "$LINE" "$HOME/.npmrc" || echo "$LINE" >> "$HOME/.npmrc"
+      user: "1000"
+      description: Configure npm auth for the GitHub Packages registry (appends to any existing .npmrc)
