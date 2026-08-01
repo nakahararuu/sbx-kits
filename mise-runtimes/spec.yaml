@@ -1,84 +1,48 @@
 schemaVersion: "2"
 kind: mixin
-name: mise-env
-displayName: mise Language Runtimes + Local Env Guard
-description: Extends the mise kit (docker/sbx-kits-contrib) — opens the domains mise needs to install Java/Go/Python/Node, and keeps mise.local.toml (mise's per-directory env-var override file) out of git and out of Claude Code's Read reach
-
-requires:
-  agent: claude
+name: mise-runtimes
+displayName: mise Language Runtime Domains
+description: Extends the mise kit (docker/sbx-kits-contrib) with the domains mise's core plugins need to install Java, Go, Python, and Node
 
 agentContext: |
   This kit extends docker/sbx-kits-contrib's `mise` kit. Apply both together:
 
-    sbx run claude --kit mise --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-env"
+    sbx run claude --kit mise --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-runtimes"
 
-  It does NOT install mise itself — `caps.network.allow` below only covers the
-  domains mise's core plugins contact when running `mise install java/go/python/node`.
-  Without the `mise` kit these installs never happen, so the network grants are
-  inert but harmless on their own.
-
-  ## Why mise.local.toml is treated specially
-
-  mise supports a local, per-directory override file (`mise.local.toml`, and the
-  dotfile spelling `.mise.local.toml`) that is layered on top of `mise.toml` and
-  is meant to hold values you do NOT want committed — most commonly env vars via
-  `[env]`, which makes it a natural place to stash API keys, tokens, and other
-  secrets so `mise activate` exports them into every shell in the directory.
-
-  That is directly in tension with this sandbox platform's own principle of not
-  persisting credentials inside the sandbox filesystem. This kit does not resolve
-  that tension — it only adds two speed bumps against *accidental* exposure:
-
-  1. A global git-ignore entry (`~/.config/git/ignore` + `core.excludesFile`) so
-     `mise.local.toml` / `.mise.local.toml` can never be `git add`-ed by mistake,
-     in any repo, at any depth, without touching any project's own `.gitignore`.
-  2. A Claude Code `permissions.deny` rule in `~/.claude/settings.json` so the
-     agent's Read tool — and, per Claude Code's docs, the file commands it
-     recognizes inside Bash (`cat`, `head`, `tail`, `sed`) — refuse to open a
-     file with either of those names, in any directory. The rule uses the
-     filesystem-root-anchored form (`Read(//**/mise.local.toml)`) rather than a
-     bare `Read(**/mise.local.toml)`, because a bare pattern in a user-level
-     settings.json only reaches paths under whatever project is currently open,
-     not sibling project directories elsewhere in the sandbox.
-
-  **Neither is a real secret boundary.** (2) only covers Claude Code's own
-  built-in tools and the Bash commands it recognizes — an arbitrary subprocess
-  that opens the file itself (`python3 -c "open('mise.local.toml').read()"`,
-  a Node script, etc.) is not intercepted, and once `mise activate` has exported
-  the values into the shell environment they are visible to every subsequent
-  command this agent runs (`env`, a stack trace that dumps env vars, ...).
-  Treat this kit as reducing the chance of *reflexively* reading or committing
-  the file, not as isolation from the values it holds. For OS-level enforcement
-  across all processes, pair this with `sandbox.filesystem.denyRead`. If you
-  need an actual secrets boundary, keep real secrets out of the sandbox and
-  inject them via the kit-spec `credentials:` block instead (proxy-managed,
-  never written to disk in cleartext) rather than `mise.local.toml`.
+  It does NOT install mise itself — `caps.network.allow` below only opens the
+  domains mise's core plugins actually contact when running
+  `mise install java/go/python/node`. Without the `mise` kit these installs
+  never happen, so the network grants are inert but harmless on their own.
 
   ## Network domains, by tool
 
-  **Node** (`src/plugins/core/node.rs`): version listing goes through the shared
-  mise-versions cache first (`mise-versions.jdx.dev/tools/node.toml`), falling
-  back to `nodejs.org` directly. Tarballs download from `nodejs.org/dist/...`;
+  Verified against `jdx/mise`'s core plugin source (`src/plugins/core/{node,go,python,java}.rs`)
+  and, where the source alone was ambiguous, by live requests from this repo's
+  dev sandbox with network policy temporarily widened.
+
+  **Node** (`node.rs`): version listing goes through the shared mise-versions
+  cache first (`mise-versions.jdx.dev/tools/node.toml`), falling back to
+  `nodejs.org` directly. Tarballs download from `nodejs.org/dist/...`;
   musl/Alpine builds instead come from `unofficial-builds.nodejs.org` (glibc
   Ubuntu sandboxes won't normally hit this, kept for completeness).
 
-  **Go** (`src/plugins/core/go.rs`): explicitly opts out of the mise-versions
-  cache (a `mod.rs` comment calls out go as one of the "canonical, always-fresh"
-  backends) — version listing runs `git ls-remote --tags https://github.com/golang/go`
+  **Go** (`go.rs`): explicitly opts out of the mise-versions cache (a `mod.rs`
+  comment calls out go as one of the "canonical, always-fresh" backends) —
+  version listing runs `git ls-remote --tags https://github.com/golang/go`
   directly. Tarballs download from the default `go.download_mirror` setting,
   `https://dl.google.com/go` — confirmed by a direct request in this repo's own
   dev sandbox (200, no redirect to another host).
 
-  **Python** (`src/plugins/core/python.rs`): on Linux x86_64/arm64 (this
-  sandbox's platforms) `python.compile` defaults to unset, which prefers
-  precompiled builds over compiling from source, so the pyenv/python-build git
-  clone path and its `mise-versions.jdx.dev` calls are not exercised. Precompiled
-  builds are astral-sh's `python-build-standalone` GitHub releases: listed via
-  `api.github.com`, downloaded via `github.com/.../releases/download/...`, which
-  redirects (302) to `objects.githubusercontent.com` — confirmed by following a
-  real redirect in this repo's dev sandbox.
+  **Python** (`python.rs`): on Linux x86_64/arm64 (this sandbox's platforms)
+  `python.compile` defaults to unset, which prefers precompiled builds over
+  compiling from source, so the pyenv/python-build git clone path and its
+  `mise-versions.jdx.dev` calls are not exercised. Precompiled builds are
+  astral-sh's `python-build-standalone` GitHub releases: listed via
+  `api.github.com`, downloaded via `github.com/.../releases/download/...`,
+  which redirects (302) to `objects.githubusercontent.com` — confirmed by
+  following a real redirect in this repo's dev sandbox.
 
-  **Java** (`src/plugins/core/java.rs`): version + download metadata comes from
+  **Java** (`java.rs`): version + download metadata comes from
   `mise-java.jdx.dev/jvm/<release_type>/<os>/<arch>.json`. The `url` field in
   that JSON is vendor-specific and was inspected directly (with network policy
   temporarily widened) for the `linux/x86_64` platform:
@@ -94,6 +58,15 @@ agentContext: |
       `cache-redirector.jetbrains.com`, `microsoft` → `aka.ms`, `oracle` /
       `oracle-graalvm` → `download.oracle.com`, `redhat` →
       `developers.redhat.com`.
+
+  ## Note on credentials
+
+  mise can also manage secrets/env vars per-directory via `mise.local.toml`
+  (an `[env]`-bearing file meant to stay out of git). This kit deliberately
+  does NOT touch that — it only opens network domains. Keeping secrets out of
+  the sandbox entirely and injecting them via the kit-spec `credentials:`
+  block (proxy-managed, never written to disk in cleartext) stays the
+  recommended path; don't use mise as a credentials store here.
 
 caps:
   network:
@@ -112,31 +85,3 @@ caps:
       - github.com
       - api.github.com
       - objects.githubusercontent.com
-
-commands:
-  install:
-    - command: |
-        set -e
-        mkdir -p ~/.config/git
-        for f in mise.local.toml .mise.local.toml; do
-          grep -qxF "$f" ~/.config/git/ignore 2>/dev/null || echo "$f" >> ~/.config/git/ignore
-        done
-        git config --global core.excludesFile ~/.config/git/ignore
-      user: "1000"
-      description: Add mise.local.toml / .mise.local.toml to a global gitignore (~/.config/git/ignore), so it's ignored in every repo/directory without editing any project's own .gitignore
-    - command: |
-        set -e
-        command -v jq >/dev/null || (apt-get update -qq && apt-get install -y -qq jq)
-      user: "0"
-      description: Ensure jq is available (used to merge the Claude Code settings.json deny rule below)
-    - command: |
-        set -e
-        mkdir -p ~/.claude
-        SETTINGS=~/.claude/settings.json
-        [ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"
-        tmp="$(mktemp)"
-        jq '.permissions.deny = (((.permissions.deny // []) + ["Read(//**/mise.local.toml)", "Read(//**/.mise.local.toml)"]) | unique)' \
-          "$SETTINGS" > "$tmp"
-        mv "$tmp" "$SETTINGS"
-      user: "1000"
-      description: Deny the Claude Code Read tool from opening mise.local.toml / .mise.local.toml in any directory
