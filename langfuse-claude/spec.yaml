@@ -31,16 +31,16 @@ credentials:
     apiKey:
       name: LANGFUSE_PUBLIC_KEY
       inject:
-        - domain: cloud.langfuse.com    # default Langfuse Cloud host (EU region) — used when LANGFUSE_HOST is unset
-        - domain: us.cloud.langfuse.com # Langfuse Cloud US region — used when LANGFUSE_HOST is set to it
+        - domain: cloud.langfuse.com
+        - domain: us.cloud.langfuse.com
   - service: langfuse-secret-key
     description: "Langfuse secret key"
     required: true
     apiKey:
       name: LANGFUSE_SECRET_KEY
       inject:
-        - domain: cloud.langfuse.com    # default Langfuse Cloud host (EU region) — used when LANGFUSE_HOST is unset
-        - domain: us.cloud.langfuse.com # Langfuse Cloud US region — used when LANGFUSE_HOST is set to it
+        - domain: cloud.langfuse.com
+        - domain: us.cloud.langfuse.com
 
 commands:
   install:
