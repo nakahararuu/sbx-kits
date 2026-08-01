@@ -18,6 +18,30 @@ caps:
       # Langfuse Cloud API (US region; two-label subdomain, needs an explicit entry)
       - us.cloud.langfuse.com
 
+credentials:
+  # Langfuse auth is HTTP Basic (publicKey:secretKey), so both values are
+  # independently dynamic per user/project — the credentials.apiKey.inject
+  # scheme:basic sugar can't express that (it takes one dynamic secret plus
+  # a *static* username), so neither entry is proxy-managed/masked here.
+  # Declaring them still gets the approval-flow prompt (bind a host env var
+  # if unset) instead of requiring a manual `sbx secret set-custom` dance.
+  - service: langfuse-public-key
+    description: "Langfuse public key (not sensitive — safe to expose, e.g. Langfuse's own client-side SDK usage)"
+    required: true
+    apiKey:
+      name: LANGFUSE_PUBLIC_KEY
+      inject:
+        - domain: cloud.langfuse.com
+        - domain: us.cloud.langfuse.com
+  - service: langfuse-secret-key
+    description: "Langfuse secret key"
+    required: true
+    apiKey:
+      name: LANGFUSE_SECRET_KEY
+      inject:
+        - domain: cloud.langfuse.com
+        - domain: us.cloud.langfuse.com
+
 commands:
   install:
     - command: |

@@ -8,7 +8,7 @@ Anthropic公式マーケットプレイス（`anthropics/claude-plugins-official
 2. `claude plugin install langfuse@claude-plugins-official` で Langfuse skill plugin を追加
 3. `npm install -g langfuse-cli` — skill が API アクセスに使う companion CLI（[langfuse/langfuse-cli](https://github.com/langfuse/langfuse-cli)）
 
-## 認証情報（ホストの環境変数をサンドボックスに注入する）
+## 認証情報
 
 `langfuse-cli` および skill は以下の環境変数で認証する。
 
@@ -20,20 +20,28 @@ LANGFUSE_HOST=https://cloud.langfuse.com   # 省略時のデフォルト。US cl
 
 （`LANGFUSE_BASE_URL` も同義でサポートされるが、`langfuse-cli` が実際に読むのは `LANGFUSE_HOST`。）
 
-`sbx run` / `sbx create` に汎用の env passthrough フラグは無いため、この kit 自体は spec.yaml から動的にホストの環境変数を読み込めない。代わりに、`LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` はホスト側で `sbx secret set-custom` を使ってプレースホルダーとしてサンドボックスに注入する（実値はプロキシが対象ホストへの通信時にのみ差し替えるため、サンドボックス内に生の値は入らない）。**ホストの現在のシェルにこれらの環境変数が設定済みであること**が前提。
+`LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` はこの kit の `spec.yaml` の `credentials` ブロックで宣言している（[kit-author: bindings](https://github.com/docker/sbx-kits-contrib/blob/main/skills/kit-author/topics/bindings.md) 参照）。ホストの `~/.config/sbx/credentials.yaml` に `langfuse-public-key` / `langfuse-secret-key` の binding が無い状態でこの kit を使うと、サンドボックス作成時に対話的に「どの環境変数 / ファイルから値を読むか」を聞かれ、一度答えれば以降は自動解決される。事前に手動でコマンドを叩いておく必要はない。binding を先に自分で用意したい場合は次のように書く。
 
-```bash
-# ホスト側で一度実行（-g で全サンドボックス共通。特定のサンドボックスだけに限定する場合は -g の代わりに <sandbox名> を指定）
-sbx secret set-custom -g \
-  --host cloud.langfuse.com --host us.cloud.langfuse.com \
-  --env LANGFUSE_PUBLIC_KEY --value "$LANGFUSE_PUBLIC_KEY"
-
-sbx secret set-custom -g \
-  --host cloud.langfuse.com --host us.cloud.langfuse.com \
-  --env LANGFUSE_SECRET_KEY --value "$LANGFUSE_SECRET_KEY"
+```yaml
+# ~/.config/sbx/credentials.yaml
+bindings:
+  langfuse-public-key:
+    discovery:
+      - env: [LANGFUSE_PUBLIC_KEY]
+    allowedDomains:
+      - cloud.langfuse.com
+      - us.cloud.langfuse.com
+  langfuse-secret-key:
+    discovery:
+      - env: [LANGFUSE_SECRET_KEY]
+    allowedDomains:
+      - cloud.langfuse.com
+      - us.cloud.langfuse.com
 ```
 
-`LANGFUSE_HOST` はプロキシが通信の宛先を決めるために使う値そのものであり、上記のプレースホルダー置換の対象にはできない（宛先ホスト名自体は差し替えられない）。デフォルトの `https://cloud.langfuse.com` で問題なければ何もする必要はない。US cloud やセルフホストを使う場合は、サンドボックス内で `export LANGFUSE_HOST=...` するか、`.env` ファイル（`langfuse --env .env api ...`）で指定する。セルフホストの場合は宛先ホストが `network.allow` にも入っている必要があるため、この kit をフォークして該当ホストを追加すること。
+Langfuse の認証は publicKey/secretKey を組み合わせた HTTP Basic で、両方ともユーザー/プロジェクトごとに動的な値のため、`credentials.apiKey.inject` の `scheme: basic` シュガー（動的な値1つ + 固定 `username` の組み合わせ用）では表現できない。そのため両エントリともプロキシ側でのマスク（`proxyManaged: true`）は使わず、実値がそのままサンドボックス内の環境変数に入る（`langfuse-cli` 自身がその2値からBasic認証ヘッダを組み立てる）。`credentials` ブロックを使う主な利点は値の秘匿ではなく、必要な認証情報を kit のメタデータとして宣言し、未設定なら対話的に補完できる点。なお `LANGFUSE_PUBLIC_KEY` は Langfuse 公式ドキュメント上も非秘匿（クライアントサイドでの利用を想定）と明記されている値。
+
+`LANGFUSE_HOST` は `credentials` の対象ではない（通信の宛先そのものであり、注入対象の値ではないため）。デフォルトの `https://cloud.langfuse.com` で問題なければ何もする必要はない。US cloud やセルフホストを使う場合は、サンドボックス内で `export LANGFUSE_HOST=...` するか、`.env` ファイル（`langfuse --env .env api ...`）で指定する。セルフホストの場合は宛先ホストが `network.allow` にも入っている必要があるため、この kit をフォークして該当ホストを追加すること。
 
 ## ネットワーク
 
