@@ -2,25 +2,26 @@ schemaVersion: "2"
 kind: mixin
 name: github-registries
 displayName: GitHub Packages / GHCR Auth
-description: Injects a GITHUB_TOKEN credential into requests to the GitHub Packages npm/Maven registries and GitHub Container Registry (ghcr.io), and configures npm/Maven/Docker to use it
+description: Injects a GITHUB_TOKEN credential into requests to the GitHub Packages npm/Maven registries and GitHub Container Registry (ghcr.io)
 
 agentContext: |
   This kit configures authentication for GitHub-hosted package registries:
 
-  - GitHub Packages (npm): `~/.npmrc` gets a
-    `//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}` line, so any
-    `npm install`/`npm publish` against a `npm.pkg.github.com` scope works
-    without further setup.
+  - GitHub Packages (npm): requests to `npm.pkg.github.com` get the
+    credential injected. This kit does NOT write `.npmrc` — a project that
+    needs npm packages from GitHub Packages already has to be configured to
+    send an `_authToken` request there in the first place (that's what
+    determines whether a client even attempts an authenticated request);
+    this kit only handles supplying the actual token value once it does.
   - GitHub Packages (Maven/Gradle): `~/.m2/settings.xml` gets a `<server
     id="github">` entry, matching the `id` GitHub's own Maven/Gradle docs
     tell you to use in your project's `pom.xml`/`build.gradle`. Shipped as a
-    static file (`files/home/.m2/settings.xml`, see spec §5.8) rather than a
-    shell heredoc, since its content is fixed and doesn't need any
-    conditional/merge logic — Maven itself expands the `${env.GITHUB_TOKEN}`
-    placeholder in it at read time.
-  - GitHub Container Registry: `~/.docker/config.json` gets a `ghcr.io` auth
-    entry, so `docker pull`/`docker push ghcr.io/...` works without an
-    explicit `docker login`.
+    static file (`files/home/.m2/settings.xml`, see spec §5.8). Unlike npm,
+    Maven has no equivalent env-var-driven convention a project could
+    already rely on, so this kit provides the file directly.
+  - GitHub Container Registry: requests to `ghcr.io` get the credential
+    injected. This kit does NOT write `.docker/config.json` or run
+    `docker login` — same reasoning as npm above.
 
   How the credential actually flows:
   - The kit declares a `github` credential (`credentials[].service: github`)
@@ -43,19 +44,10 @@ agentContext: |
 
   This kit covers npm, Maven/Gradle, and container images. To add another
   registry-shaped ecosystem (NuGet, RubyGems, ...) add its registry host to
-  both `caps.network.allow` and `credentials[0].apiKey.inject`, plus a
-  config file for it:
-  - If the file's content is fixed (no per-install merge/conditional logic
-    needed), prefer a static file under `files/home/...` (see spec §5.8) —
-    that's how this kit ships `~/.m2/settings.xml`. Placeholders like
-    `${GITHUB_TOKEN}` are fine in a static file; they're expanded by the
-    consuming tool at its own read time, not by sbx.
-  - Otherwise write it from a `commands.install` shell step (e.g. this kit's
-    `.npmrc` append and `.docker/config.json` jq-merge, both of which need
-    to check/merge against a possibly-preexisting file).
-  - Note: `commands.initFiles` content, unlike the `files/` directory, is
-    restricted to the `${WORKDIR}` placeholder — so `${GITHUB_TOKEN}` cannot
-    go through `commands.initFiles`.
+  both `caps.network.allow` and `credentials[0].apiKey.inject`. Only add a
+  local config file (a static file under `files/home/...`, see spec §5.8)
+  if the ecosystem has no existing env-var-driven convention a project
+  could already rely on — as with Maven above.
 
 credentials:
   - service: github
@@ -82,30 +74,3 @@ caps:
       # blob storage ghcr.io redirects to for image layers; no credential
       # is injected here, pulls/pushes only need it reachable
       - pkg-containers.githubusercontent.com
-
-commands:
-  install:
-    - command: |
-        command -v jq >/dev/null || (apt-get update -qq && apt-get install -y -qq jq)
-      user: "0"
-      description: Ensure jq is available
-    - command: |
-        set -e
-        mkdir -p "$HOME/.docker"
-        AUTH=$(printf '%s' "x-access-token:${GITHUB_TOKEN}" | base64 -w0)
-        CONFIG="$HOME/.docker/config.json"
-        if [ -f "$CONFIG" ]; then
-          jq --arg auth "$AUTH" '.auths["ghcr.io"] = {"auth": $auth}' "$CONFIG" > "$CONFIG.tmp"
-          mv "$CONFIG.tmp" "$CONFIG"
-        else
-          jq -n --arg auth "$AUTH" '{auths: {"ghcr.io": {"auth": $auth}}}' > "$CONFIG"
-        fi
-      user: "1000"
-      description: Configure Docker auth for ghcr.io (merges into any existing config.json)
-    - command: |
-        set -e
-        LINE='//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}'
-        touch "$HOME/.npmrc"
-        grep -qxF "$LINE" "$HOME/.npmrc" || echo "$LINE" >> "$HOME/.npmrc"
-      user: "1000"
-      description: Configure npm auth for the GitHub Packages registry (appends to any existing .npmrc)
