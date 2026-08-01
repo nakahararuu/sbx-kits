@@ -15,12 +15,12 @@ Anthropic公式マーケットプレイス（`anthropics/claude-plugins-official
 ```bash
 LANGFUSE_PUBLIC_KEY=pk-lf-...
 LANGFUSE_SECRET_KEY=sk-lf-...
-LANGFUSE_HOST=https://cloud.langfuse.com   # 省略時のデフォルト。US cloud は https://us.cloud.langfuse.com、self-host は各自のURL
+LANGFUSE_HOST=https://cloud.langfuse.com   # 省略時のデフォルト。US cloud は https://us.cloud.langfuse.com、JP cloud は https://jp.cloud.langfuse.com、self-host は各自のURL
 ```
 
 （`LANGFUSE_BASE_URL` も同義でサポートされるが、`langfuse-cli` が実際に読むのは `LANGFUSE_HOST`。）
 
-Langfuse の認証は publicKey/secretKey を組み合わせた HTTP Basic。この kit は `spec.yaml` の `credentials` ブロックで、2つの生キーではなく **その組み合わせ済みの Basic 認証値**（`base64("publicKey:secretKey")`）を1つの secret（service: `langfuse`）として要求する（[kit-author: bindings](https://github.com/docker/sbx-kits-contrib/blob/main/skills/kit-author/topics/bindings.md) 参照）。この値は `proxyManaged: true` で、`Authorization: Basic %s` として `cloud.langfuse.com` / `us.cloud.langfuse.com` 宛のリクエストにプロキシが直接セットする。実値はサンドボックス内には一切入らない。
+Langfuse の認証は publicKey/secretKey を組み合わせた HTTP Basic。この kit は `spec.yaml` の `credentials` ブロックで、2つの生キーではなく **その組み合わせ済みの Basic 認証値**（`base64("publicKey:secretKey")`）を1つの secret（service: `langfuse`）として要求する（[kit-author: bindings](https://github.com/docker/sbx-kits-contrib/blob/main/skills/kit-author/topics/bindings.md) 参照）。この値は `proxyManaged: true` で、`Authorization: Basic %s` として `cloud.langfuse.com` / `us.cloud.langfuse.com` / `jp.cloud.langfuse.com` 宛のリクエストにプロキシが直接セットする。実値はサンドボックス内には一切入らない。
 
 ホストの `~/.config/sbx/credentials.yaml` に `langfuse` の binding が無い状態でこの kit を使うと、サンドボックス作成時に対話的に「どの環境変数 / ファイルから値を読むか」を聞かれ、一度答えれば以降は自動解決される。binding を先に自分で用意したい場合は次のように書く（値は事前に base64 エンコードしておくこと。`sbx` に base64 エンコード用の `filter` はまだ無い — [docker/sbx-releases#292](https://github.com/docker/sbx-releases/issues/292) 参照）。
 
@@ -37,6 +37,7 @@ bindings:
     allowedDomains:
       - cloud.langfuse.com
       - us.cloud.langfuse.com
+      - jp.cloud.langfuse.com
 ```
 
 `langfuse-cli` 自身は `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` の2変数からBasic認証ヘッダを組み立てる作りなので、CLIが起動時に「未設定」で弾かないよう、spec.yaml の `environment.variables` にダミー値（`pk-lf-proxy-managed` / `sk-lf-proxy-managed`）を静的に設定している。CLIがこの2値から組み立てるヘッダの中身はどうであれ、実際に Langfuse Cloud へ送られる時点でプロキシが `Authorization` ヘッダを上記の実値で上書きするため、ダミー値が外部に漏れることはない。
@@ -51,6 +52,7 @@ bindings:
 | langfuse-cli の npm install | `registry.npmjs.org` |
 | Langfuse Cloud API（EU）・ドキュメント | `langfuse.com`, `*.langfuse.com` |
 | Langfuse Cloud API（US） | `us.cloud.langfuse.com` |
+| Langfuse Cloud API（JP） | `jp.cloud.langfuse.com` |
 
 セルフホストの Langfuse を使う場合は、そのホストも `network.allow` に追加する必要がある（上記参照）。
 

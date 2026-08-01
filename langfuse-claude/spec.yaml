@@ -15,8 +15,9 @@ caps:
       # Langfuse Cloud API / docs (EU cloud + docs site share the apex + single-label subdomains)
       - langfuse.com
       - "*.langfuse.com"
-      # Langfuse Cloud API (US region; two-label subdomain, needs an explicit entry)
+      # Langfuse Cloud API (US and JP regions; two-label subdomains, need explicit entries)
       - us.cloud.langfuse.com
+      - jp.cloud.langfuse.com
 
 credentials:
   # Langfuse auth is HTTP Basic. Rather than handing the CLI raw
@@ -38,14 +39,17 @@ credentials:
         - domain: us.cloud.langfuse.com
           header: Authorization
           format: "Basic %s"
+        - domain: jp.cloud.langfuse.com
+          header: Authorization
+          format: "Basic %s"
 
 environment:
   variables:
     # langfuse-cli builds its own (throwaway) Basic Auth header from these at
     # startup — they just need to be non-empty so the CLI doesn't refuse to
     # run. The proxy overwrites the real Authorization header for
-    # cloud.langfuse.com / us.cloud.langfuse.com using the `langfuse`
-    # credential above, so these values never reach Langfuse.
+    # cloud.langfuse.com / us.cloud.langfuse.com / jp.cloud.langfuse.com using
+    # the `langfuse` credential above, so these values never reach Langfuse.
     LANGFUSE_PUBLIC_KEY: "pk-lf-proxy-managed"
     LANGFUSE_SECRET_KEY: "sk-lf-proxy-managed"
 
