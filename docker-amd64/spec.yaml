@@ -1,0 +1,77 @@
+schemaVersion: "2"
+kind: mixin
+name: docker-amd64
+displayName: Docker amd64 Emulation
+description: Enables running --platform linux/amd64 Docker containers on an arm64 sandbox via QEMU user-mode emulation and binfmt_misc
+
+agentContext: |
+  This sandbox can run linux/amd64 Docker images even though the sandbox itself is
+  arm64 (aarch64), via QEMU user-mode emulation registered in the kernel's
+  binfmt_misc facility.
+
+  Usage:
+
+    docker run --platform linux/amd64 <image> ...
+    docker pull --platform linux/amd64 <image>
+    docker buildx build --platform linux/amd64 ...
+
+  What this kit does, and why:
+  - At every sandbox startup, mounts the `binfmt_misc` filesystem at
+    `/proc/sys/fs/binfmt_misc` (not mounted by default in this sandbox), then runs
+    `docker run --privileged tonistiigi/binfmt --install amd64` to register
+    `qemu-x86_64` as the interpreter for ELF x86_64 binaries. `tonistiigi/binfmt` is
+    the same image `docker buildx` itself uses to set up emulation, and it bundles
+    its own statically-linked qemu-x86_64 (registered with binfmt_misc's `F` flag,
+    which caches the binary's bytes in the kernel at registration time) — no apt
+    package needed on the host.
+  - Both the mount and the binfmt_misc registration are kernel/runtime state, not
+    filesystem state, so they do NOT persist across a sandbox restart. That's why
+    both steps run as `startup` commands (idempotent — safe to re-run) rather than
+    once-only `install` commands. `tonistiigi/binfmt --install` is itself idempotent
+    (prints "already registered" and exits 0 if re-run), and this kit additionally
+    skips invoking it at all when `qemu-x86_64` is already registered.
+  - There is no `commands.install` step. `commands.install` runs before the sandbox's
+    Docker socket is mounted (it executes inside a throwaway provisioning container,
+    not the live sandbox), so `docker pull`/`docker run` fail there with `dial unix
+    /var/run/docker.sock: connect: no such file or directory`. `docker run` auto-pulls
+    a missing image on its own, so the `startup` command above pulls
+    `tonistiigi/binfmt` itself on first boot (a few seconds) and reuses the cached
+    image on every boot after that — no separate install step needed.
+
+  Pitfall to know about (not hit by this kit, but easy to hit by hand): running
+  `docker run --privileged tonistiigi/binfmt --install ...` *before* `binfmt_misc` is
+  mounted prints "OK" for every arch but silently registers nothing — without
+  `--pid=host`, the container mounts its own private `binfmt_misc` instance inside
+  its own throwaway mount namespace, so the registration disappears the moment the
+  container exits. This kit avoids that by always mounting `binfmt_misc` on the host
+  first, before ever invoking `tonistiigi/binfmt`.
+
+  Troubleshooting:
+  - `exec format error` when running an amd64 container means the registration is
+    missing (e.g. right after a sandbox restart, before startup commands finish, or
+    if they failed). Check `ls /proc/sys/fs/binfmt_misc/` — it should list `register`,
+    `status`, and `qemu-x86_64`. If `qemu-x86_64` is missing, re-run this kit's startup
+    commands manually (see spec.yaml) or restart the sandbox.
+  - This is pure emulation (no JIT translation cache across runs), so amd64 containers
+    run noticeably slower than native arm64 ones. Prefer arm64/multi-arch images when
+    available.
+
+commands:
+  startup:
+    - command:
+        - bash
+        - -c
+        - |
+          set -e
+          case "$(uname -m)" in
+            aarch64|arm64) ;;
+            *) echo "docker-amd64: host is already amd64, nothing to do"; exit 0 ;;
+          esac
+          if ! mountpoint -q /proc/sys/fs/binfmt_misc; then
+            mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
+          fi
+          if [ ! -e /proc/sys/fs/binfmt_misc/qemu-x86_64 ]; then
+            docker run --rm --privileged tonistiigi/binfmt --install amd64
+          fi
+      user: "0"
+      description: Mount binfmt_misc, then register qemu-x86_64 via tonistiigi/binfmt (both are volatile kernel state — must be redone on every boot)
