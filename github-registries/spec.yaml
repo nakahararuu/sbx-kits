@@ -2,62 +2,81 @@ schemaVersion: "2"
 kind: mixin
 name: github-registries
 displayName: GitHub Packages / GHCR Auth
-description: Injects a GITHUB_TOKEN credential into requests to the GitHub Packages npm/Maven registries and GitHub Container Registry (ghcr.io)
+description: Injects credentials into requests to the GitHub Packages npm/Maven registries and GitHub Container Registry (ghcr.io)
 
 agentContext: |
   This kit configures authentication for GitHub-hosted package registries:
   requests to `npm.pkg.github.com`, `maven.pkg.github.com`, and `ghcr.io`
-  get a `github` credential injected.
+  get a credential injected.
 
   This kit does NOT write `.npmrc`, `.docker/config.json`, `.m2/settings.xml`,
   or run any login step. A project that needs this kit already has to be
   configured to send an authenticated request to these registries in the
   first place — that project-side config is what determines *whether* a
   client even attempts an authenticated request; this kit's job is only to
-  supply the real token once it does, swapping in the actual credential for
+  supply the real credential once it does, swapping in the actual value for
   whatever placeholder the client sent. If a project's own setup requires
   an explicit login step (e.g. `docker login`), that step still needs to
   run — this kit doesn't remove it, it just means the value passed to that
-  login step doesn't need to be a real token.
+  login step doesn't need to be real.
+
+  Two separate credentials, because Basic Auth needs a real username:
+  - `github` (env `GITHUB_TOKEN`) — injected as a Bearer token into
+    `npm.pkg.github.com` requests. This is just the raw PAT.
+  - `github-basic` (env `GITHUB_BASIC_AUTH`) — injected as a Basic Auth
+    header into `maven.pkg.github.com` and `ghcr.io` requests. An `sbx`
+    credential carries a single opaque value, not a username+password
+    pair, and Maven/GHCR (unlike npm) don't accept an arbitrary/placeholder
+    username the way `git`'s `x-access-token` convention does — so this
+    value must be `base64("<your-github-username>:<GITHUB_TOKEN>")`,
+    pre-combined on the host, and gets spliced directly after `Basic ` via
+    `format: "Basic %s"` (no `scheme: basic` sugar, which would only ever
+    let the kit itself supply a fixed username, not the host).
+
+  Host-side setup for both:
+
+    sbx secret set -g github -t "$GITHUB_TOKEN"
+    sbx secret set -g github-basic -t "$(printf '%s:%s' "<your-github-username>" "$GITHUB_TOKEN" | base64 -w0)"
 
   How the credential actually flows:
-  - The kit declares a `github` credential (`credentials[].service: github`)
-    that the sandbox proxy injects into outbound requests to the registry
-    domains — the container-side `GITHUB_TOKEN` env var only ever holds the
-    literal placeholder `proxy-managed`; the real token is substituted by
-    the proxy on the wire and never touches the sandbox filesystem or
-    process list.
-  - This kit does NOT declare where the real token comes from — that is
+  - The container-side env var (`GITHUB_TOKEN` / `GITHUB_BASIC_AUTH`) only
+    ever holds the literal placeholder `proxy-managed`; the real value is
+    substituted by the sandbox proxy on the wire and never touches the
+    sandbox filesystem or process list.
+  - Neither credential declares where its real value comes from — that is
     host-side configuration, deliberately kept out of the kit (see the
-    "Credential binding" section of the README). The simplest setup is:
-
-      sbx secret set -g github -t "$GITHUB_TOKEN"
-
-    which reads the *host's* GITHUB_TOKEN once and stores it in the global
-    secret store.
+    "Credential binding" section of the README).
   - `pkg-containers.githubusercontent.com` is allow-listed (network only, no
     credential injected) because `docker pull`/`push` against `ghcr.io`
     redirects blob transfers to that host.
 
   This kit covers npm, Maven/Gradle, and container images. To add another
   registry-shaped ecosystem (NuGet, RubyGems, ...) add its registry host to
-  both `caps.network.allow` and `credentials[0].apiKey.inject`.
+  `caps.network.allow` and to whichever credential's `apiKey.inject` list
+  matches its auth scheme (Bearer → `github`; Basic with a real username →
+  a new `apiKey.inject` entry on `github-basic`).
 
 credentials:
   - service: github
-    description: "GitHub token for GitHub Packages (npm, Maven/Gradle) and GHCR"
+    description: "GitHub token, injected as a Bearer token for the GitHub Packages npm registry"
     apiKey:
       name: GITHUB_TOKEN
       proxyManaged: true
       inject:
         - domain: npm.pkg.github.com
           scheme: bearer
+  - service: github-basic
+    description: "base64(username:token), injected as a Basic Auth header for GitHub Packages Maven/Gradle and GHCR"
+    apiKey:
+      name: GITHUB_BASIC_AUTH
+      proxyManaged: true
+      inject:
         - domain: maven.pkg.github.com
-          scheme: basic
-          username: x-access-token
+          header: Authorization
+          format: "Basic %s"
         - domain: ghcr.io
-          scheme: basic
-          username: x-access-token
+          header: Authorization
+          format: "Basic %s"
 
 caps:
   network:
