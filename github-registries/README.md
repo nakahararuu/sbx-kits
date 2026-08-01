@@ -7,7 +7,7 @@ GitHub Packages（npm・Maven/Gradle）、GitHub Container Registry（ghcr.io）
 - `~/.npmrc` に `//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}` を追記
   （既存の `.npmrc` があれば末尾に追記、同じ行が既にあれば追記しない）
 - `~/.m2/settings.xml` に `id: github` の `<server>` エントリを設定
-  （GitHub公式のMaven/Gradleドキュメントが `pom.xml`/`build.gradle` 側で指定するように案内している `id` と一致。既存の `settings.xml` があれば上書き）
+  （GitHub公式のMaven/Gradleドキュメントが `pom.xml`/`build.gradle` 側で指定するように案内している `id` と一致。`files/home/.m2/settings.xml` として静的ファイルで配置するため、既存の `settings.xml` があれば上書き）
 - `~/.docker/config.json` に `ghcr.io` 向けの `auth` エントリを追加
   （既存の `config.json` があれば `jq` でマージ、他レジストリの設定は保持）
 - `github.com` への git credential helper をグローバル設定
@@ -67,7 +67,10 @@ sbx secret set -g github -t "$GITHUB_TOKEN"
 
 ## 対応していないGitHub Packagesのエコシステム
 
-npm・Maven/Gradle・コンテナ（ghcr.io）・git-over-HTTPS のみ対応しています。NuGet / RubyGems などが必要な場合は、`spec.yaml` の `caps.network.allow` と `credentials[0].apiKey.inject` に該当ホスト（例: `nuget.pkg.github.com`）を追加し、`commands.install` にその形式の設定ファイルを書き出すシェルコマンドを追加してください。`commands.initFiles` の `content` は `${WORKDIR}` 以外のプレースホルダを受け付けないため、`${GITHUB_TOKEN}` を埋め込むファイルは必ず `commands.install` のシェルコマンドで書き出す必要があります(本 kit の `.npmrc`/`settings.xml`/`config.json` の実装を参照)。
+npm・Maven/Gradle・コンテナ（ghcr.io）・git-over-HTTPS のみ対応しています。NuGet / RubyGems などが必要な場合は、`spec.yaml` の `caps.network.allow` と `credentials[0].apiKey.inject` に該当ホスト（例: `nuget.pkg.github.com`）を追加し、その形式の設定ファイルを追加してください。
+
+- ファイル内容が固定（マージや条件分岐が不要）なら、`files/home/...` 配下の静的ファイルにするのがおすすめです（[spec §5.8](https://github.com/docker/sbx-kits-contrib/blob/main/spec/SPEC-v2.md#58-files-directory)）。本kitの `~/.m2/settings.xml` はこの方式で、`${GITHUB_TOKEN}` のようなプレースホルダも静的ファイルにそのまま書けます（sbxではなく、それを読むツール側が自分のタイミングで展開するため）。
+- 既存ファイルとのマージや重複チェックが必要な場合（本kitの `.npmrc` 追記、`.docker/config.json` の `jq` マージなど）は `commands.install` のシェルコマンドで書き出してください。`commands.initFiles` の `content` は `${WORKDIR}` 以外のプレースホルダを受け付けないため、`${GITHUB_TOKEN}` を埋め込むファイルは `commands.initFiles` では書けません。
 
 ## 使い方
 

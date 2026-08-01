@@ -14,7 +14,11 @@ agentContext: |
     without further setup.
   - GitHub Packages (Maven/Gradle): `~/.m2/settings.xml` gets a `<server
     id="github">` entry, matching the `id` GitHub's own Maven/Gradle docs
-    tell you to use in your project's `pom.xml`/`build.gradle`.
+    tell you to use in your project's `pom.xml`/`build.gradle`. Shipped as a
+    static file (`files/home/.m2/settings.xml`, see spec §5.8) rather than a
+    shell heredoc, since its content is fixed and doesn't need any
+    conditional/merge logic — Maven itself expands the `${env.GITHUB_TOKEN}`
+    placeholder in it at read time.
   - GitHub Container Registry: `~/.docker/config.json` gets a `ghcr.io` auth
     entry, so `docker pull`/`docker push ghcr.io/...` works without an
     explicit `docker login`.
@@ -59,11 +63,18 @@ agentContext: |
   This kit covers npm, Maven/Gradle, container images, and generic
   git-over-HTTPS. To add another registry-shaped ecosystem (NuGet,
   RubyGems, ...) add its registry host to both `caps.network.allow` and
-  `credentials[0].apiKey.inject`, plus a `commands.install` step that writes
-  that ecosystem's config file referencing `${GITHUB_TOKEN}` (note:
-  `commands.initFiles` content is restricted to the `${WORKDIR}`
-  placeholder, so any file that needs `${GITHUB_TOKEN}` inside it must be
-  written by a shell command instead).
+  `credentials[0].apiKey.inject`, plus a config file for it:
+  - If the file's content is fixed (no per-install merge/conditional logic
+    needed), prefer a static file under `files/home/...` (see spec §5.8) —
+    that's how this kit ships `~/.m2/settings.xml`. Placeholders like
+    `${GITHUB_TOKEN}` are fine in a static file; they're expanded by the
+    consuming tool at its own read time, not by sbx.
+  - Otherwise write it from a `commands.install` shell step (e.g. this kit's
+    `.npmrc` append and `.docker/config.json` jq-merge, both of which need
+    to check/merge against a possibly-preexisting file).
+  - Note: `commands.initFiles` content, unlike the `files/` directory, is
+    restricted to the `${WORKDIR}` placeholder — so `${GITHUB_TOKEN}` cannot
+    go through `commands.initFiles`.
 
 credentials:
   - service: github
@@ -121,22 +132,6 @@ commands:
         grep -qxF "$LINE" "$HOME/.npmrc" || echo "$LINE" >> "$HOME/.npmrc"
       user: "1000"
       description: Configure npm auth for the GitHub Packages registry (appends to any existing .npmrc)
-    - command: |
-        set -e
-        mkdir -p "$HOME/.m2"
-        cat > "$HOME/.m2/settings.xml" <<'XML'
-        <settings>
-          <servers>
-            <server>
-              <id>github</id>
-              <username>x-access-token</username>
-              <password>${env.GITHUB_TOKEN}</password>
-            </server>
-          </servers>
-        </settings>
-        XML
-      user: "1000"
-      description: Configure Maven/Gradle auth for the GitHub Packages registry (server id "github" in settings.xml, matches GitHub's own docs; overwrites any existing settings.xml)
     - command: |
         set -e
         git config --global credential.https://github.com.helper \
