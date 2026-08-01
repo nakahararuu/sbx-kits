@@ -13,7 +13,7 @@ kit の仕様（schemaVersion、caps.network、commands など）については
 | [`claude-documentation`](./claude-documentation) | ClaudeがMiro、Cosenseを用いたドキュメンテーションを支援できるようにする |
 | [`datadog-claude`](./datadog-claude) | Datadogを使ったトラブルシューティング用ツール一式 |
 | [`docker-amd64`](./docker-amd64) | arm64サンドボックスで `--platform linux/amd64` のDockerコンテナをQEMUエミュレーションで実行できるようにする |
-| [`github-registries`](./github-registries) | GitHub Packages（npm・Maven）、GitHub Container Registry（ghcr.io）、github.comへのgit経由アクセスに `GITHUB_TOKEN` を使った認証情報を注入する |
+| [`github-registries`](./github-registries) | GitHub Packages（npm・Maven）とGitHub Container Registry（ghcr.io）に `GITHUB_TOKEN` を使った認証情報を注入する |
 | [`nakahararuu-claude-plugins`](./nakahararuu-claude-plugins) | `nakahararuu/claude-plugins` marketplace を追加し、公開されている全プラグインをインストールする |
 | [`sample-network-policy`](./sample-network-policy) | ネットワークポリシー（allow/deny）のみを設定するサンプル |
 | [`sample-ruff-lint`](./sample-ruff-lint) | チーム共通設定付きで Ruff（Python linter）を導入するサンプル |

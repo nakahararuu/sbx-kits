@@ -1,6 +1,6 @@
 # github-registries
 
-GitHub Packages（npm・Maven/Gradle）、GitHub Container Registry（ghcr.io）、および github.com への git 経由アクセスに、`GITHUB_TOKEN` を使った認証情報を自動的に注入する mixin kit。
+GitHub Packages（npm・Maven/Gradle）と GitHub Container Registry（ghcr.io）への接続時に、`GITHUB_TOKEN` を使った認証情報を自動的に注入する mixin kit。
 
 ## インストール内容
 
@@ -10,8 +10,6 @@ GitHub Packages（npm・Maven/Gradle）、GitHub Container Registry（ghcr.io）
   （GitHub公式のMaven/Gradleドキュメントが `pom.xml`/`build.gradle` 側で指定するように案内している `id` と一致。`files/home/.m2/settings.xml` として静的ファイルで配置するため、既存の `settings.xml` があれば上書き）
 - `~/.docker/config.json` に `ghcr.io` 向けの `auth` エントリを追加
   （既存の `config.json` があれば `jq` でマージ、他レジストリの設定は保持）
-- `github.com` への git credential helper をグローバル設定
-  （`git clone`/`fetch`/`push` が `https://github.com/...` に対して認証される）
 
 これにより、サンドボックス内で追加のログイン操作なしに以下が動きます。
 
@@ -19,26 +17,12 @@ GitHub Packages（npm・Maven/Gradle）、GitHub Container Registry（ghcr.io）
 npm install @your-org/some-package   # npm.pkg.github.com がスコープ登録されていれば
 docker pull ghcr.io/your-org/your-image:latest
 docker push ghcr.io/your-org/your-image:latest
-git clone https://github.com/your-org/private-repo
 mvn deploy   # pom.xml の <repository><id>github</id> と対応
 ```
 
-### Go modules と Python パッケージについて
-
-GitHub Packages という名前からは連想しにくいですが、以下は GitHub Packages の対応エコシステムに**含まれていません**。
-
-- **Python**: GitHub Packages に PyPI 互換レジストリは存在しません。GitHub上のプライベートなPythonコードが必要な場合は、リポジトリから直接installしてください。この kit が設定する git-over-HTTPS 認証がそのまま使えます。
-  ```bash
-  pip install git+https://github.com/<org>/<repo>
-  ```
-- **Go**: `go.pkg.github.com` のようなレジストリはありません。プライベートな Go module は `go get`/`go mod download` が内部で `git` 経由で取得します。この kit の git credential helper 設定でそこは認証されますが、`GOPRIVATE`（対象モジュールのパスをパブリックな Go module proxy に問い合わせず直接VCSアクセスさせる設定）はプロジェクト固有のため、この kit からは設定できません。利用側で設定してください。
-  ```bash
-  go env -w GOPRIVATE=github.com/<your-org>/*
-  ```
-
 ## 認証情報の流れ
 
-このkitは `credentials` ブロックで `github` サービスの credential を宣言し、`npm.pkg.github.com` / `maven.pkg.github.com` / `ghcr.io` / `github.com` への通信にプロキシ経由で注入されるよう設定します。
+このkitは `credentials` ブロックで `github` サービスの credential を宣言し、`npm.pkg.github.com` / `maven.pkg.github.com` / `ghcr.io` への通信にプロキシ経由で注入されるよう設定します。
 
 - サンドボックス内の `GITHUB_TOKEN` 環境変数は常にプレースホルダ文字列 `proxy-managed` です。実際のトークンはサンドボックス外のプロキシがネットワークリクエストの送信時に差し替えるため、**実トークンはサンドボックスのファイルシステムやプロセス一覧には一切現れません**。
 - kit 自身は「トークンをどこから取得するか」を宣言しません（`sbx` の credential binding の設計上、kit は "何が必要か" だけを宣言し、"どこにあるか" はユーザー側の設定に委ねられています）。
@@ -63,11 +47,10 @@ sbx secret set -g github -t "$GITHUB_TOKEN"
 | GitHub Packages (Maven/Gradle) | `maven.pkg.github.com` | あり（Basic, username: `x-access-token`） |
 | GitHub Container Registry | `ghcr.io` | あり（Basic, username: `x-access-token`） |
 | GHCR のイメージレイヤー転送先 | `pkg-containers.githubusercontent.com` | なし（到達性のみ許可） |
-| git-over-HTTPS / Go modules / git経由install | `github.com` | あり（Basic, username: `x-access-token`） |
 
 ## 対応していないGitHub Packagesのエコシステム
 
-npm・Maven/Gradle・コンテナ（ghcr.io）・git-over-HTTPS のみ対応しています。NuGet / RubyGems などが必要な場合は、`spec.yaml` の `caps.network.allow` と `credentials[0].apiKey.inject` に該当ホスト（例: `nuget.pkg.github.com`）を追加し、その形式の設定ファイルを追加してください。
+npm・Maven/Gradle・コンテナ（ghcr.io）のみ対応しています。NuGet / RubyGems などが必要な場合は、`spec.yaml` の `caps.network.allow` と `credentials[0].apiKey.inject` に該当ホスト（例: `nuget.pkg.github.com`）を追加し、その形式の設定ファイルを追加してください。
 
 - ファイル内容が固定（マージや条件分岐が不要）なら、`files/home/...` 配下の静的ファイルにするのがおすすめです（[spec §5.8](https://github.com/docker/sbx-kits-contrib/blob/main/spec/SPEC-v2.md#58-files-directory)）。本kitの `~/.m2/settings.xml` はこの方式で、`${GITHUB_TOKEN}` のようなプレースホルダも静的ファイルにそのまま書けます（sbxではなく、それを読むツール側が自分のタイミングで展開するため）。
 - 既存ファイルとのマージや重複チェックが必要な場合（本kitの `.npmrc` 追記、`.docker/config.json` の `jq` マージなど）は `commands.install` のシェルコマンドで書き出してください。`commands.initFiles` の `content` は `${WORKDIR}` 以外のプレースホルダを受け付けないため、`${GITHUB_TOKEN}` を埋め込むファイルは `commands.initFiles` では書けません。
