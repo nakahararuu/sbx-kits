@@ -30,8 +30,13 @@ agentContext: |
     once-only `install` commands. `tonistiigi/binfmt --install` is itself idempotent
     (prints "already registered" and exits 0 if re-run), and this kit additionally
     skips invoking it at all when `qemu-x86_64` is already registered.
-  - `commands.install` just pre-pulls the `tonistiigi/binfmt` image so the startup
-    commands don't depend on network access being up yet at boot time.
+  - There is no `commands.install` step. `commands.install` runs before the sandbox's
+    Docker socket is mounted (it executes inside a throwaway provisioning container,
+    not the live sandbox), so `docker pull`/`docker run` fail there with `dial unix
+    /var/run/docker.sock: connect: no such file or directory`. `docker run` auto-pulls
+    a missing image on its own, so the `startup` command above pulls
+    `tonistiigi/binfmt` itself on first boot (a few seconds) and reuses the cached
+    image on every boot after that — no separate install step needed.
 
   Pitfall to know about (not hit by this kit, but easy to hit by hand): running
   `docker run --privileged tonistiigi/binfmt --install ...` *before* `binfmt_misc` is
@@ -52,12 +57,6 @@ agentContext: |
     available.
 
 commands:
-  install:
-    - command: |
-        set -e
-        docker pull tonistiigi/binfmt
-      user: "1000"
-      description: Pre-pull the tonistiigi/binfmt image (same emulator installer docker buildx uses) so startup doesn't depend on network being up yet
   startup:
     - command:
         - bash

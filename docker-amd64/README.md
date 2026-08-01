@@ -4,12 +4,14 @@ arm64 サンドボックス上で `--platform linux/amd64` の Docker コンテ�
 
 ## インストール内容
 
-- **`tonistiigi/binfmt` イメージの pull**（`install`）— `docker buildx` が内部で emulator セットアップに使っているのと同じイメージ。起動時にネットワークが未確立でも困らないよう事前 pull しておくだけで、登録自体はしない
-- 毎起動時（`startup`）に以下を実行
-  - `binfmt_misc` ファイルシステムのマウント（`/proc/sys/fs/binfmt_misc`。このサンドボックスではデフォルト未マウント）
-  - `docker run --privileged tonistiigi/binfmt --install amd64` で `qemu-x86_64` を `binfmt_misc` に登録
+`install` コマンドはありません。毎起動時（`startup`）に以下を実行します。
+
+- `binfmt_misc` ファイルシステムのマウント（`/proc/sys/fs/binfmt_misc`。このサンドボックスではデフォルト未マウント）
+- `docker run --privileged tonistiigi/binfmt --install amd64` で `qemu-x86_64` を `binfmt_misc` に登録（`tonistiigi/binfmt` は `docker buildx` が内部で emulator セットアップに使っているのと同じイメージ）
 
 マウントと登録はカーネル/ランタイムの状態であり、サンドボックス再起動で失われるため、`install`（一度きり）ではなく `startup`（毎起動・冪等）コマンドとして実装しています。
+
+`commands.install` に処理を置かなかったのは、`install` フェーズは実際のサンドボックス起動前の一時的なプロビジョニング用コンテナ内で動いており、`/var/run/docker.sock` がまだマウントされていないためです（`docker pull`/`docker run` は `dial unix /var/run/docker.sock: ... no such file or directory` で失敗します）。`docker run` はイメージが無ければ自動 pull してくれるので、上記の `startup` コマンドが初回起動時に `tonistiigi/binfmt` を pull（数秒程度）し、以降の起動ではキャッシュを使い回します。
 
 ## 使い方
 
