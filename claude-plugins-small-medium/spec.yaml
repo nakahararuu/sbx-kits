@@ -24,14 +24,6 @@ commands:
   install:
     - command: |
         set -e
-        command -v uvx >/dev/null || ln -s "$(command -v uv)" /usr/local/bin/uvx
-      user: "0"
-      description: >-
-        Symlink uvx to the sandbox's pre-installed uv binary (uv itself already
-        ships with the base image; only the uvx entry point is missing, and
-        serena's MCP server is launched via `uvx --from git+...`)
-    - command: |
-        set -e
         claude plugin marketplace add anthropics/claude-plugins-official
         claude plugin install context7@claude-plugins-official
         claude plugin install feature-dev@claude-plugins-official
@@ -39,6 +31,15 @@ commands:
         claude plugin install pr-review-toolkit@claude-plugins-official
         claude plugin install commit-commands@claude-plugins-official
         claude plugin install security-guidance@claude-plugins-official
-        claude plugin install serena@claude-plugins-official
       user: "1000"
       description: Add the official marketplace and install the curated plugin set
+    - command: |
+        set -e
+        claude mcp add -s user serena -- uv tool run --from git+https://github.com/oraios/serena serena start-mcp-server
+      user: "1000"
+      description: >-
+        Register serena directly as a user-scoped MCP server (not via the
+        marketplace plugin — its .mcp.json still uses `uvx --from ...`, which
+        breaks on uv >=0.9.0 now that `uvx` is a full alias for `uv` itself
+        rather than `uv tool run`; `uv tool run --from ...` is the current
+        equivalent)
