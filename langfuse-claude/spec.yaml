@@ -1,0 +1,285 @@
+schemaVersion: "2"
+kind: mixin
+name: langfuse-claude
+displayName: Langfuse Telemetry for Claude Code
+description: Runs a self-hosted Langfuse stack (docker compose) inside the sandbox and installs the official Claude Code plugin that traces sessions to it
+
+agentContext: |
+  This sandbox self-hosts Langfuse (https://langfuse.com) via `docker compose` and wires
+  the official `langfuse-observability` Claude Code plugin (from the
+  `anthropics/claude-plugins-official` marketplace listing, sourced from
+  `langfuse/claude-observability-plugin`) to send every Claude Code CLI turn to it.
+
+  Architecture:
+  - `/opt/langfuse/docker-compose.yml` + `/opt/langfuse/.env` define the Langfuse stack:
+    langfuse-web, langfuse-worker, postgres, clickhouse, redis, minio. This is the
+    upstream `docker-compose.yml` published by the Langfuse project, unmodified except
+    for the generated `.env` values.
+  - All secrets (Postgres/Redis/MinIO passwords, NEXTAUTH_SECRET, SALT, ENCRYPTION_KEY,
+    and the Langfuse project's public/secret API key pair) are generated locally with
+    `openssl rand` during `commands.install` and written to `/opt/langfuse/.env`
+    (root-readable, world-readable — single-tenant sandbox). Nothing is fetched from or
+    sent to a host secret store: this kit needs no `sbx secret set` credential, because
+    both the Langfuse server and the plugin that talks to it live in the same sandbox.
+  - The same generated API key pair is passed twice: as `LANGFUSE_INIT_PROJECT_PUBLIC_KEY`
+    / `LANGFUSE_INIT_PROJECT_SECRET_KEY` (Langfuse's own non-interactive bootstrap
+    mechanism, which pre-creates an org/project/user with exactly these keys on first
+    boot) and as `--config LANGFUSE_PUBLIC_KEY=... --config LANGFUSE_SECRET_KEY=...` when
+    installing the Claude Code plugin. Both sides agree on the same key pair without
+    calling the Langfuse API to mint one.
+  - `commands.startup` runs `docker compose up -d` in `/opt/langfuse` on every sandbox
+    boot (the Docker socket is not available during `commands.install`; see the
+    docker-amd64 kit's README for the same constraint). `docker compose up -d` is
+    idempotent, so this is safe to re-run on every start.
+
+  Usage:
+  - Just use `claude` normally. The `langfuse-observability` plugin's Stop/SessionEnd
+    hooks upload each turn in the background; nothing else is required.
+  - Only `claude` CLI sessions and desktop **Code mode** are traced — regular Claude
+    Desktop **Chat mode** does not invoke Claude Code hooks and is never captured.
+  - Langfuse's web UI listens on container port 3000. This kit-spec version has no
+    `ports:` capability to auto-publish it, so ask the user to run
+    `sbx ports <sandbox> --publish 3000:3000` on the host to view the dashboard in a
+    browser (see "Publishing ports to the host" in the project's environment notes).
+  - Login with the email/password in `LANGFUSE_INIT_USER_EMAIL` /
+    `LANGFUSE_INIT_USER_PASSWORD` inside `/opt/langfuse/.env`
+    (`cat /opt/langfuse/.env` to read the generated password).
+
+  Troubleshooting:
+  - Traces missing: check `~/.claude/state/langfuse_hook.log` first (the plugin fails
+    open — a stopped/starting Langfuse stack, a bad key, or a missing `uv` never blocks
+    Claude Code, it just skips tracing and logs why).
+  - Langfuse containers not (yet) healthy: `docker compose -f /opt/langfuse/docker-compose.yml ps`.
+    `clickhouse` and `postgres` take the longest to become healthy on a cold first boot.
+  - This kit does not touch Claude Code's separate native OpenTelemetry metrics/logs
+    exporter (`CLAUDE_CODE_ENABLE_TELEMETRY`) — it only wires the Langfuse plugin's
+    hook-based LLM/tool tracing, which is what was asked for.
+
+caps:
+  network:
+    allow:
+      # Official marketplace + plugin source (git clone, releases API, release assets)
+      - github.com
+      - api.github.com
+      - objects.githubusercontent.com
+      # uv downloads the Langfuse Python SDK from PyPI on the hook's first run
+      - pypi.org
+      - files.pythonhosted.org
+      # Chainguard registry — the compose stack's minio image is
+      # cgr.dev/chainguard/minio. Verified by testing: plain docker.io pulls
+      # succeed with no allowlist entry at all (same as the docker-amd64 kit),
+      # but cgr.dev is a distinct registry host and needs an explicit allow —
+      # without it, `docker compose up` fails with a 403 from the sandbox's
+      # own network policy (not from Chainguard) resolving this image's manifest.
+      - cgr.dev
+
+commands:
+  install:
+    - command: |
+        set -e
+        mkdir -p /opt/langfuse
+        cd /opt/langfuse
+
+        LF_PUBLIC_KEY="pk-lf-$(openssl rand -hex 16)"
+        LF_SECRET_KEY="sk-lf-$(openssl rand -hex 24)"
+
+        cat > .env <<EOF
+        NEXTAUTH_URL=http://localhost:3000
+        NEXTAUTH_SECRET=$(openssl rand -hex 32)
+        SALT=$(openssl rand -hex 16)
+        ENCRYPTION_KEY=$(openssl rand -hex 32)
+        POSTGRES_PASSWORD=$(openssl rand -hex 16)
+        CLICKHOUSE_PASSWORD=$(openssl rand -hex 16)
+        REDIS_AUTH=$(openssl rand -hex 16)
+        MINIO_ROOT_PASSWORD=$(openssl rand -hex 16)
+        LANGFUSE_INIT_ORG_ID=claude-code
+        LANGFUSE_INIT_ORG_NAME=Claude Code
+        LANGFUSE_INIT_PROJECT_ID=claude-code-telemetry
+        LANGFUSE_INIT_PROJECT_NAME=Claude Code Telemetry
+        LANGFUSE_INIT_PROJECT_PUBLIC_KEY=${LF_PUBLIC_KEY}
+        LANGFUSE_INIT_PROJECT_SECRET_KEY=${LF_SECRET_KEY}
+        LANGFUSE_INIT_USER_EMAIL=claude@sandbox.local
+        LANGFUSE_INIT_USER_NAME=Claude Code
+        LANGFUSE_INIT_USER_PASSWORD=$(openssl rand -hex 16)
+        EOF
+
+        cat > docker-compose.yml <<'EOF'
+        # Upstream: https://github.com/langfuse/langfuse/blob/main/docker-compose.yml
+        # Values come from the adjacent .env, generated by this kit's install step.
+        services:
+          langfuse-worker:
+            image: docker.io/langfuse/langfuse-worker:4
+            restart: always
+            depends_on: &langfuse-depends-on
+              postgres:
+                condition: service_healthy
+              minio:
+                condition: service_healthy
+              redis:
+                condition: service_healthy
+              clickhouse:
+                condition: service_healthy
+            ports:
+              - 127.0.0.1:3030:3030
+            environment: &langfuse-worker-env
+              NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+              DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres
+              SALT: ${SALT}
+              ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+              TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-true}
+              CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+              CLICKHOUSE_URL: http://clickhouse:8123
+              CLICKHOUSE_USER: clickhouse
+              CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+              LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+              LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+              LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+              LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+              LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+              LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+              LANGFUSE_S3_EVENT_UPLOAD_PREFIX: events/
+              LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+              LANGFUSE_S3_MEDIA_UPLOAD_REGION: auto
+              LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: minio
+              LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+              LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://minio:9000
+              LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+              LANGFUSE_S3_MEDIA_UPLOAD_PREFIX: media/
+              REDIS_HOST: redis
+              REDIS_PORT: 6379
+              REDIS_AUTH: ${REDIS_AUTH}
+              REDIS_TLS_ENABLED: "false"
+
+          langfuse-web:
+            image: docker.io/langfuse/langfuse:4
+            restart: always
+            depends_on: *langfuse-depends-on
+            ports:
+              - 3000:3000
+            environment:
+              <<: *langfuse-worker-env
+              NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+              LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://localhost:9090
+              LANGFUSE_INIT_ORG_ID: ${LANGFUSE_INIT_ORG_ID}
+              LANGFUSE_INIT_ORG_NAME: ${LANGFUSE_INIT_ORG_NAME}
+              LANGFUSE_INIT_PROJECT_ID: ${LANGFUSE_INIT_PROJECT_ID}
+              LANGFUSE_INIT_PROJECT_NAME: ${LANGFUSE_INIT_PROJECT_NAME}
+              LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY}
+              LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_PROJECT_SECRET_KEY}
+              LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL}
+              LANGFUSE_INIT_USER_NAME: ${LANGFUSE_INIT_USER_NAME}
+              LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD}
+
+          clickhouse:
+            image: docker.io/clickhouse/clickhouse-server:25.12
+            restart: always
+            user: "101:101"
+            environment:
+              CLICKHOUSE_DB: default
+              CLICKHOUSE_USER: clickhouse
+              CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+            volumes:
+              - langfuse_clickhouse_data:/var/lib/clickhouse
+              - langfuse_clickhouse_logs:/var/log/clickhouse-server
+            ports:
+              - 127.0.0.1:8123:8123
+              - 127.0.0.1:9000:9000
+            healthcheck:
+              test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
+              interval: 5s
+              timeout: 5s
+              retries: 10
+              start_period: 1s
+
+          minio:
+            image: cgr.dev/chainguard/minio
+            restart: always
+            entrypoint: sh
+            command: -c 'mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data'
+            environment:
+              MINIO_ROOT_USER: minio
+              MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+            ports:
+              - 9090:9000
+              - 127.0.0.1:9091:9001
+            volumes:
+              - langfuse_minio_data:/data
+            healthcheck:
+              test: ["CMD", "mc", "ready", "local"]
+              interval: 1s
+              timeout: 5s
+              retries: 5
+              start_period: 1s
+
+          redis:
+            image: docker.io/redis:7
+            restart: always
+            command: >
+              --requirepass ${REDIS_AUTH}
+              --maxmemory-policy noeviction
+            ports:
+              - 127.0.0.1:6379:6379
+            volumes:
+              - langfuse_redis_data:/data
+            healthcheck:
+              test: ["CMD", "redis-cli", "ping"]
+              interval: 3s
+              timeout: 10s
+              retries: 10
+
+          postgres:
+            image: docker.io/postgres:17
+            restart: always
+            healthcheck:
+              test: ["CMD-SHELL", "pg_isready -U postgres"]
+              interval: 3s
+              timeout: 3s
+              retries: 10
+            environment:
+              POSTGRES_USER: postgres
+              POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+              POSTGRES_DB: postgres
+              TZ: UTC
+              PGTZ: UTC
+            ports:
+              - 127.0.0.1:5432:5432
+            volumes:
+              - langfuse_postgres_data:/var/lib/postgresql/data
+
+        volumes:
+          langfuse_postgres_data:
+            driver: local
+          langfuse_clickhouse_data:
+            driver: local
+          langfuse_clickhouse_logs:
+            driver: local
+          langfuse_minio_data:
+            driver: local
+          langfuse_redis_data:
+            driver: local
+        EOF
+
+        chmod 644 .env docker-compose.yml
+      user: "0"
+      description: Generate local-only secrets and write the Langfuse docker-compose stack to /opt/langfuse
+    - command: |
+        set -e
+        source /opt/langfuse/.env
+        claude plugin marketplace add langfuse/Claude-Observability-Plugin
+        claude plugin install langfuse-observability@langfuse-observability \
+          --config LANGFUSE_PUBLIC_KEY="${LANGFUSE_INIT_PROJECT_PUBLIC_KEY}" \
+          --config LANGFUSE_SECRET_KEY="${LANGFUSE_INIT_PROJECT_SECRET_KEY}" \
+          --config LANGFUSE_BASE_URL="http://localhost:3000"
+      user: "1000"
+      description: Install the official langfuse-observability Claude Code plugin, pointed at the local Langfuse instance
+  startup:
+    - command:
+        - bash
+        - -c
+        - |
+          set -e
+          cd /opt/langfuse
+          docker compose up -d
+          timeout 120 bash -c 'until curl -fsS http://localhost:3000/api/public/health >/dev/null 2>&1; do sleep 2; done' || true
+      user: "0"
+      description: Start (or resume) the Langfuse stack; idempotent, safe to re-run on every boot

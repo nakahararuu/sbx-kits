@@ -13,6 +13,7 @@ kit の仕様（schemaVersion、caps.network、commands など）については
 | [`claude-documentation`](./claude-documentation) | ClaudeがMiro、Cosenseを用いたドキュメンテーションを支援できるようにする |
 | [`datadog-claude`](./datadog-claude) | Datadogを使ったトラブルシューティング用ツール一式 |
 | [`docker-amd64`](./docker-amd64) | arm64サンドボックスで `--platform linux/amd64` のDockerコンテナをQEMUエミュレーションで実行できるようにする |
+| [`langfuse-claude`](./langfuse-claude) | サンドボックス内に Langfuse を docker compose でセルフホストし、公式 langfuse-observability plugin で Claude Code のテレメトリを可視化する |
 | [`mise-runtimes`](./mise-runtimes) | `mise` kit を拡張し、Java/Go/Python/Node の install に必要な domain を許可する |
 | [`nakahararuu-claude-plugins`](./nakahararuu-claude-plugins) | `nakahararuu/claude-plugins` marketplace を追加し、公開されている全プラグインをインストールする |
 | [`sample-network-policy`](./sample-network-policy) | ネットワークポリシー（allow/deny）のみを設定するサンプル |
