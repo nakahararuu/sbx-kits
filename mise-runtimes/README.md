@@ -26,11 +26,10 @@ mise のコア plugin 実装(`jdx/mise` の `src/plugins/core/{node,go,python,ja
 | Java 本体(`zulu` vendor) | `cdn.azul.com` | |
 | Java 本体(`liberica` / `liberica-nik` vendor) | `download.bell-sw.com` | |
 | Java 本体(`jetbrains` vendor) | `cache-redirector.jetbrains.com` | |
-| Java 本体(`microsoft` vendor) | `aka.ms` | |
 | Java 本体(`oracle` / `oracle-graalvm` vendor) | `download.oracle.com` | |
 | Java 本体(`redhat` vendor) | `developers.redhat.com` | |
 
-上記は `mise-java.jdx.dev` の実データで確認できた Java vendor を全て allow 済み。
+`mise-java.jdx.dev` の実データで確認できた Java vendor は上記で全て allow 済み。**例外は `microsoft` vendor**(ドメイン `aka.ms`)— これは Microsoft の汎用 URL 短縮サービスで、JDK ダウンロード専用のドメインではなく `aka.ms/<code>` が任意の URL にリダイレクトし得るため、allowlist に入れるとドメイン制限の意味が薄れる。意図的に allow していない。他の vendor ドメインも同様の汎用リダイレクト/URL短縮サービスでないことを確認済み。
 
 ## 使い方
 

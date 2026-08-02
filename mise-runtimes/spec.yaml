@@ -17,11 +17,13 @@ caps:
       - mise-java.jdx.dev
       - download.java.net
       # Java vendor-specific CDNs (zulu, liberica/liberica-nik, jetbrains,
-      # microsoft, oracle/oracle-graalvm, redhat)
+      # oracle/oracle-graalvm, redhat). NOT included: microsoft's aka.ms —
+      # it's Microsoft's general-purpose URL shortener, not a domain scoped
+      # to JDK downloads, so allowing it would let any aka.ms/<code> redirect
+      # through, defeating the point of a domain allowlist.
       - cdn.azul.com
       - download.bell-sw.com
       - cache-redirector.jetbrains.com
-      - aka.ms
       - download.oracle.com
       - developers.redhat.com
       # Shared: go version listing (git ls-remote), python-build-standalone
