@@ -1,0 +1,44 @@
+schemaVersion: "2"
+kind: mixin
+name: claude-dev-plugins
+displayName: Claude Code Dev Plugins
+description: Installs a curated set of official Claude Code plugins (context7, feature-dev, code-review, pr-review-toolkit, commit-commands, security-guidance, serena) for small-to-medium development workflows
+
+caps:
+  network:
+    allow:
+      # Official marketplace + plugin install (git clone, API, release assets)
+      - github.com
+      - api.github.com
+      - objects.githubusercontent.com
+      # uv installer (astral.sh redirects to releases.astral.sh for the actual binary)
+      - astral.sh
+      - releases.astral.sh
+      # uv/pip package resolution for serena's Python dependencies
+      - pypi.org
+      - files.pythonhosted.org
+      # npx install of the context7 MCP server package
+      - registry.npmjs.org
+      # context7 MCP server runtime API
+      - context7.com
+      - mcp.context7.com
+
+commands:
+  install:
+    - command: |
+        set -e
+        curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=/usr/local/bin sh
+      user: "0"
+      description: Install uv (provides uvx, required to launch the serena MCP server)
+    - command: |
+        set -e
+        claude plugin marketplace add anthropics/claude-plugins-official
+        claude plugin install context7@claude-plugins-official
+        claude plugin install feature-dev@claude-plugins-official
+        claude plugin install code-review@claude-plugins-official
+        claude plugin install pr-review-toolkit@claude-plugins-official
+        claude plugin install commit-commands@claude-plugins-official
+        claude plugin install security-guidance@claude-plugins-official
+        claude plugin install serena@claude-plugins-official
+      user: "1000"
+      description: Add the official marketplace and install the curated plugin set
