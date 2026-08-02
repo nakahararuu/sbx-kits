@@ -92,6 +92,7 @@ commands:
 
         LF_PUBLIC_KEY="pk-lf-$(openssl rand -hex 16)"
         LF_SECRET_KEY="sk-lf-$(openssl rand -hex 24)"
+        CH_PASSWORD="$(openssl rand -hex 16)"
 
         cat > .env <<EOF
         NEXTAUTH_URL=http://localhost:3000
@@ -99,7 +100,7 @@ commands:
         SALT=$(openssl rand -hex 16)
         ENCRYPTION_KEY=$(openssl rand -hex 32)
         POSTGRES_PASSWORD=$(openssl rand -hex 16)
-        CLICKHOUSE_PASSWORD=$(openssl rand -hex 16)
+        CLICKHOUSE_PASSWORD=${CH_PASSWORD}
         REDIS_AUTH=$(openssl rand -hex 16)
         MINIO_ROOT_PASSWORD=$(openssl rand -hex 16)
         LANGFUSE_INIT_ORG_ID=claude-code
@@ -111,6 +112,52 @@ commands:
         LANGFUSE_INIT_USER_EMAIL=claude@sandbox.local
         LANGFUSE_INIT_USER_NAME="Claude Code"
         LANGFUSE_INIT_USER_PASSWORD=$(openssl rand -hex 16)
+        EOF
+
+        mkdir -p clickhouse-config.d
+        cat > clickhouse-config.d/cluster.xml <<EOF
+        <clickhouse>
+            <remote_servers>
+                <default>
+                    <shard>
+                        <replica>
+                            <host>localhost</host>
+                            <port>9000</port>
+                            <user>clickhouse</user>
+                            <password>${CH_PASSWORD}</password>
+                        </replica>
+                    </shard>
+                </default>
+            </remote_servers>
+            <keeper_server>
+                <tcp_port>9181</tcp_port>
+                <server_id>1</server_id>
+                <log_storage_path>/var/lib/clickhouse/coordination/log</log_storage_path>
+                <snapshot_storage_path>/var/lib/clickhouse/coordination/snapshots</snapshot_storage_path>
+                <coordination_settings>
+                    <operation_timeout_ms>10000</operation_timeout_ms>
+                    <session_timeout_ms>30000</session_timeout_ms>
+                    <raft_logs_level>warning</raft_logs_level>
+                </coordination_settings>
+                <raft_configuration>
+                    <server>
+                        <id>1</id>
+                        <hostname>localhost</hostname>
+                        <port>9444</port>
+                    </server>
+                </raft_configuration>
+            </keeper_server>
+            <zookeeper>
+                <node>
+                    <host>localhost</host>
+                    <port>9181</port>
+                </node>
+            </zookeeper>
+            <macros>
+                <replica>standalone</replica>
+                <shard>1</shard>
+            </macros>
+        </clickhouse>
         EOF
 
         cat > docker-compose.yml <<'EOF'
@@ -191,6 +238,7 @@ commands:
             volumes:
               - langfuse_clickhouse_data:/var/lib/clickhouse
               - langfuse_clickhouse_logs:/var/log/clickhouse-server
+              - ./clickhouse-config.d:/etc/clickhouse-server/config.d:ro
             ports:
               - 127.0.0.1:8123:8123
               - 127.0.0.1:9000:9000
@@ -269,7 +317,8 @@ commands:
             driver: local
         EOF
 
-        chmod 644 .env docker-compose.yml
+        chmod 644 .env docker-compose.yml clickhouse-config.d/cluster.xml
+        chmod 755 clickhouse-config.d
       user: "0"
       description: Generate local-only secrets and write the Langfuse docker-compose stack to /opt/langfuse
     - command: |
@@ -336,8 +385,15 @@ commands:
         - -c
         - |
           set -e
+          timeout 60 bash -c 'until docker info >/dev/null 2>&1; do sleep 1; done'
           cd /opt/langfuse
           docker compose up -d
           timeout 120 bash -c 'until curl -fsS http://localhost:3000/api/public/health >/dev/null 2>&1; do sleep 2; done' || true
       user: "0"
-      description: Start (or resume) the Langfuse stack; idempotent, safe to re-run on every boot
+      description: >-
+        Start (or resume) the Langfuse stack; idempotent, safe to re-run on
+        every boot. Waits for the Docker socket first — on the first boot
+        this hook can run before dockerd is actually reachable, which fails
+        `docker compose up -d` outright (observed: "dial unix
+        /var/run/docker.sock: ... no such file or directory") and leaves the
+        stack never started until something re-runs this manually.
