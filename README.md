@@ -11,6 +11,7 @@ kit の仕様（schemaVersion、caps.network、commands など）については
 | [`sbx-kit-dev`](./sbx-kit-dev) | このモノレポで kit を開発するためのツールをインストールするkit |
 | [`chrome-devtools-host`](./chrome-devtools-host) | ホストマシン上で動く Chrome を `chrome-devtools-mcp` 経由で操作できるようにする |
 | [`claude-documentation`](./claude-documentation) | ClaudeがMiro、Cosenseを用いたドキュメンテーションを支援できるようにする |
+| [`claude-plugins-small-medium`](./claude-plugins-small-medium) | 公式マーケットプレイスから小〜中規模開発向け plugin（context7, feature-dev, code-review, pr-review-toolkit, commit-commands, security-guidance, serena）一式をインストールする |
 | [`datadog-claude`](./datadog-claude) | Datadogを使ったトラブルシューティング用ツール一式 |
 | [`docker-amd64`](./docker-amd64) | arm64サンドボックスで `--platform linux/amd64` のDockerコンテナをQEMUエミュレーションで実行できるようにする |
 | [`mise-runtimes`](./mise-runtimes) | `mise` kit を拡張し、Java/Go/Python/Node の install に必要な domain を許可する |

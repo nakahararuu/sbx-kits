@@ -1,0 +1,40 @@
+schemaVersion: "2"
+kind: mixin
+name: claude-plugins-small-medium
+displayName: Claude Code Plugins (Small–Medium Dev)
+description: Installs a curated set of official Claude Code plugins (context7, feature-dev, code-review, pr-review-toolkit, commit-commands, security-guidance, serena) for small-to-medium development workflows
+
+caps:
+  network:
+    allow:
+      # Official marketplace + plugin install (git clone, API, release assets)
+      - github.com
+      - api.github.com
+      - objects.githubusercontent.com
+      # uv/pip package resolution for serena's Python dependencies
+      - pypi.org
+      - files.pythonhosted.org
+      # npx install of the context7 MCP server package
+      - registry.npmjs.org
+      # context7 MCP server runtime API
+      - context7.com
+      - mcp.context7.com
+
+commands:
+  install:
+    - command: |
+        set -e
+        claude plugin marketplace add anthropics/claude-plugins-official
+        claude plugin install context7@claude-plugins-official
+        claude plugin install feature-dev@claude-plugins-official
+        claude plugin install code-review@claude-plugins-official
+        claude plugin install pr-review-toolkit@claude-plugins-official
+        claude plugin install commit-commands@claude-plugins-official
+        claude plugin install security-guidance@claude-plugins-official
+      user: "1000"
+      description: Add the official marketplace and install the curated plugin set
+    - command: |
+        set -e
+        claude mcp add -s user serena -- uv tool run --from git+https://github.com/oraios/serena serena start-mcp-server
+      user: "1000"
+      description: Register serena as a user MCP server (the marketplace plugin is unmaintained and broken)
