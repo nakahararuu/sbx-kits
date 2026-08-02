@@ -28,9 +28,9 @@ agentContext: |
     installing the Claude Code plugin. Both sides agree on the same key pair without
     calling the Langfuse API to mint one.
   - `commands.startup` runs `docker compose up -d` in `/opt/langfuse` on every sandbox
-    boot (the Docker socket is not available during `commands.install`; see the
-    docker-amd64 kit's README for the same constraint). `docker compose up -d` is
-    idempotent, so this is safe to re-run on every start.
+    boot, not in `commands.install`, because the Docker socket is not mounted yet when
+    `commands.install` runs. `docker compose up -d` is idempotent, so this is safe to
+    re-run on every start.
 
   This kit also lets Claude itself read the telemetry back, not just a human via the
   browser: the official `langfuse-cli` (npm) and the official `langfuse` skill (from
@@ -79,10 +79,10 @@ caps:
       - registry.npmjs.org
       # Chainguard registry — the compose stack's minio image is
       # cgr.dev/chainguard/minio. Verified by testing: plain docker.io pulls
-      # succeed with no allowlist entry at all (same as the docker-amd64 kit),
-      # but cgr.dev is a distinct registry host and needs an explicit allow —
-      # without it, `docker compose up` fails with a 403 from the sandbox's
-      # own network policy (not from Chainguard) resolving this image's manifest.
+      # succeed with no allowlist entry at all, but cgr.dev is a distinct
+      # registry host and needs an explicit allow — without it, `docker
+      # compose up` fails with a 403 from the sandbox's own network policy
+      # (not from Chainguard) resolving this image's manifest.
       - cgr.dev
 
 commands:
