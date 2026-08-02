@@ -78,11 +78,7 @@ caps:
       # npm install of the official langfuse-cli
       - registry.npmjs.org
       # Chainguard registry — the compose stack's minio image is
-      # cgr.dev/chainguard/minio. Verified by testing: plain docker.io pulls
-      # succeed with no allowlist entry at all, but cgr.dev is a distinct
-      # registry host and needs an explicit allow — without it, `docker
-      # compose up` fails with a 403 from the sandbox's own network policy
-      # (not from Chainguard) resolving this image's manifest.
+      # cgr.dev/chainguard/minio, a distinct registry host from docker.io.
       - cgr.dev
 
 commands:

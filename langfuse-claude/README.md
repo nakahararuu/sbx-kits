@@ -53,7 +53,7 @@ sbx run claude --kit /path/to/langfuse-claude/
 | Langfuse Python SDK の初回ダウンロード（`uv run --script` 経由） | `pypi.org`, `files.pythonhosted.org` |
 | minio イメージ（`cgr.dev/chainguard/minio`）の pull | `cgr.dev` |
 
-Docker イメージの pull は `commands.startup` 内の `docker compose up -d` で行われます（`commands.install` の時点では Docker ソケットがまだマウントされておらず `docker` コマンドが使えないため）。実際にこのサンドボックス環境で検証したところ、`docker.io` からの pull（`langfuse/*`, `clickhouse/clickhouse-server`, `redis`, `postgres`）は `caps.network.allow` に何も書かなくても成功しました。一方 `cgr.dev`（minio イメージのレジストリ）は許可リストに無いドメインとしてサンドボックスのネットワークポリシーに 403 で弾かれたため、上表のとおり明示的に allow しています。
+Docker イメージの pull は `commands.startup` 内の `docker compose up -d` で行われます（`commands.install` の時点では Docker ソケットがまだマウントされておらず `docker` コマンドが使えないため）。`docker.io` からの pull（`langfuse/*`, `clickhouse/clickhouse-server`, `redis`, `postgres`）には `caps.network.allow` へのエントリは不要ですが、`cgr.dev`（minio イメージのレジストリ）は別ホストなので上表のとおり明示的に allow しています。
 
 ## スコープ外
 
