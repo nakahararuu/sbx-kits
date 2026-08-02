@@ -92,10 +92,42 @@ caps:
       - "*.r2.cloudflarestorage.com"
 
 commands:
+  initFiles:
+    # listen.xml and write-plugin-config.js are fully static, so they're plain
+    # files here instead of heredocs buried inside shell scripts. docker-compose.yml
+    # can't join them: it's full of ${VAR} for docker compose's own runtime env
+    # substitution, and initFiles.content rejects any placeholder other than
+    # ${WORKDIR} — it's written via commands.install below instead.
+    - path: /opt/langfuse/clickhouse-config.d/listen.xml
+      mode: "0644"
+      content: |
+        <clickhouse>
+            <listen_host>0.0.0.0</listen_host>
+        </clickhouse>
+    - path: /opt/langfuse/write-plugin-config.js
+      mode: "0644"
+      content: |
+        const fs = require("fs");
+        const path = require("path");
+        const settingsPath = path.join(process.env.HOME, ".claude", "settings.json");
+        let settings = {};
+        try {
+          settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+        } catch (e) {}
+        settings.pluginConfigs = settings.pluginConfigs || {};
+        settings.pluginConfigs["langfuse-observability@langfuse-observability"] = {
+          options: {
+            LANGFUSE_PUBLIC_KEY: process.env.LANGFUSE_INIT_PROJECT_PUBLIC_KEY,
+            LANGFUSE_SECRET_KEY: process.env.LANGFUSE_INIT_PROJECT_SECRET_KEY,
+            LANGFUSE_BASE_URL: "http://localhost:3000",
+          },
+        };
+        fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
   install:
     - command: |
         set -e
-        mkdir -p /opt/langfuse
+        mkdir -p /opt/langfuse/clickhouse-config.d
         cd /opt/langfuse
 
         LF_PUBLIC_KEY="pk-lf-$(openssl rand -hex 16)"
@@ -122,7 +154,6 @@ commands:
         LANGFUSE_INIT_USER_PASSWORD=$(openssl rand -hex 16)
         EOF
 
-        mkdir -p clickhouse-config.d
         cat > clickhouse-config.d/cluster.xml <<EOF
         <clickhouse>
             <remote_servers>
@@ -165,12 +196,6 @@ commands:
                 <replica>standalone</replica>
                 <shard>1</shard>
             </macros>
-        </clickhouse>
-        EOF
-
-        cat > clickhouse-config.d/listen.xml <<'EOF'
-        <clickhouse>
-            <listen_host>0.0.0.0</listen_host>
         </clickhouse>
         EOF
 
@@ -331,10 +356,16 @@ commands:
             driver: local
         EOF
 
-        chmod 644 .env docker-compose.yml clickhouse-config.d/cluster.xml clickhouse-config.d/listen.xml
+        chmod 644 .env docker-compose.yml clickhouse-config.d/cluster.xml
         chmod 755 clickhouse-config.d
       user: "0"
-      description: Generate local-only secrets and write the Langfuse docker-compose stack to /opt/langfuse
+      description: >-
+        Generate local-only secrets, then write the three files whose content
+        depends on them (.env, docker-compose.yml — full of ${VAR} for docker
+        compose's own substitution, clickhouse-config.d/cluster.xml). The
+        stack's two remaining files (clickhouse-config.d/listen.xml,
+        write-plugin-config.js) are fully static with no such placeholders,
+        so they live in commands.initFiles instead.
     - command: |
         set -e
         claude plugin marketplace add langfuse/Claude-Observability-Plugin
@@ -345,27 +376,7 @@ commands:
         set -e
         . /opt/langfuse/.env
         export LANGFUSE_INIT_PROJECT_PUBLIC_KEY LANGFUSE_INIT_PROJECT_SECRET_KEY
-        cat > /tmp/langfuse-plugin-config.js <<'EOF'
-        const fs = require("fs");
-        const path = require("path");
-        const settingsPath = path.join(process.env.HOME, ".claude", "settings.json");
-        let settings = {};
-        try {
-          settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-        } catch (e) {}
-        settings.pluginConfigs = settings.pluginConfigs || {};
-        settings.pluginConfigs["langfuse-observability@langfuse-observability"] = {
-          options: {
-            LANGFUSE_PUBLIC_KEY: process.env.LANGFUSE_INIT_PROJECT_PUBLIC_KEY,
-            LANGFUSE_SECRET_KEY: process.env.LANGFUSE_INIT_PROJECT_SECRET_KEY,
-            LANGFUSE_BASE_URL: "http://localhost:3000",
-          },
-        };
-        fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
-        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-        EOF
-        node /tmp/langfuse-plugin-config.js
-        rm -f /tmp/langfuse-plugin-config.js
+        node /opt/langfuse/write-plugin-config.js
       user: "1000"
       description: >-
         Write the langfuse-observability plugin's config directly to
