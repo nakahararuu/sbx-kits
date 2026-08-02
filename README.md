@@ -13,6 +13,7 @@ kit の仕様（schemaVersion、caps.network、commands など）については
 | [`claude-documentation`](./claude-documentation) | ClaudeがMiro、Cosenseを用いたドキュメンテーションを支援できるようにする |
 | [`datadog-claude`](./datadog-claude) | Datadogを使ったトラブルシューティング用ツール一式 |
 | [`docker-amd64`](./docker-amd64) | arm64サンドボックスで `--platform linux/amd64` のDockerコンテナをQEMUエミュレーションで実行できるようにする |
+| [`mise-runtimes`](./mise-runtimes) | `mise` kit を拡張し、Java/Go/Python/Node の install に必要な domain を許可する |
 | [`nakahararuu-claude-plugins`](./nakahararuu-claude-plugins) | `nakahararuu/claude-plugins` marketplace を追加し、公開されている全プラグインをインストールする |
 | [`sample-network-policy`](./sample-network-policy) | ネットワークポリシー（allow/deny）のみを設定するサンプル |
 | [`sample-ruff-lint`](./sample-ruff-lint) | チーム共通設定付きで Ruff（Python linter）を導入するサンプル |
