@@ -4,7 +4,7 @@
 
 ## インストール内容
 
-- **uv** — `uvx` を提供する Python パッケージランナー。serena plugin の MCP サーバー起動（`uvx --from git+https://github.com/oraios/serena serena start-mcp-server`）に必要なため、`/usr/local/bin` に直接インストールする（shell rc 経由の PATH 設定に依存しないため、Claude Code が起動する MCP サーバープロセスからも確実に見える）
+- **uvx シンボリックリンク** — sandbox には `uv` 本体がベースイメージにプリインストールされているが、`uvx` エントリポイントは含まれていない。serena plugin の MCP サーバー起動（`uvx --from git+https://github.com/oraios/serena serena start-mcp-server`）に必要なため、既存の `uv` バイナリへの `uvx` シンボリックリンクを `/usr/local/bin` に作成する（`uv` は argv0 で `uv`/`uvx` の挙動を切り替えるため、シンボリックリンクだけで動作する）
 - **plugin 一式**（`claude plugin marketplace add anthropics/claude-plugins-official` の後、以下を install）
   - `context7` — 最新のライブラリドキュメント・コード例をプロンプトに取り込む MCP server（Upstash 提供）
   - `feature-dev` — 探索・設計・実装・レビューを担当する agent を揃えた機能開発ワークフロー
@@ -21,7 +21,6 @@
 | 用途 | ドメイン |
 |------|----------|
 | マーケットプレイス取得・plugin install（git clone / API / release asset） | `github.com`, `api.github.com`, `objects.githubusercontent.com` |
-| uv インストーラー（`astral.sh` は `releases.astral.sh` にリダイレクトされる） | `astral.sh`, `releases.astral.sh` |
 | serena の Python 依存関係解決（uv 経由） | `pypi.org`, `files.pythonhosted.org` |
 | context7 MCP server の npx install | `registry.npmjs.org` |
 | context7 MCP server の実行時 API | `context7.com`, `mcp.context7.com` |

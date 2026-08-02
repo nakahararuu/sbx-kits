@@ -11,9 +11,6 @@ caps:
       - github.com
       - api.github.com
       - objects.githubusercontent.com
-      # uv installer (astral.sh redirects to releases.astral.sh for the actual binary)
-      - astral.sh
-      - releases.astral.sh
       # uv/pip package resolution for serena's Python dependencies
       - pypi.org
       - files.pythonhosted.org
@@ -27,9 +24,12 @@ commands:
   install:
     - command: |
         set -e
-        curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=/usr/local/bin sh
+        command -v uvx >/dev/null || ln -s "$(command -v uv)" /usr/local/bin/uvx
       user: "0"
-      description: Install uv (provides uvx, required to launch the serena MCP server)
+      description: >-
+        Symlink uvx to the sandbox's pre-installed uv binary (uv itself already
+        ships with the base image; only the uvx entry point is missing, and
+        serena's MCP server is launched via `uvx --from git+...`)
     - command: |
         set -e
         claude plugin marketplace add anthropics/claude-plugins-official
