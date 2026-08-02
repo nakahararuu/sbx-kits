@@ -4,7 +4,7 @@ Claude Code のセッション（LLM呼び出し・ツール呼び出し・ト�
 
 ## インストール内容
 
-- **Langfuse スタック** — 公式の `docker-compose.yml`（langfuse-web / langfuse-worker / postgres / clickhouse / redis / minio）を `/opt/langfuse` に配置し、サンドボックス起動のたびに `docker compose up -d` で起動。ClickHouse には単一ノード用の Keeper/`cluster.xml` 設定を `clickhouse-config.d/` にバインドマウントしており、Langfuse v4 のマイグレーションが要求する `ON CLUSTER default` DDL に対応させている
+- **Langfuse スタック** — 公式の `docker-compose.yml`（langfuse-web / langfuse-worker / postgres / clickhouse / redis / minio）を `/opt/langfuse` に配置し、サンドボックス起動のたびに `docker compose up -d` で起動。ClickHouse には単一ノード用の Keeper/`cluster.xml`（Langfuse v4 のマイグレーションが要求する `ON CLUSTER default` DDL に対応するため）と `listen.xml`（`0.0.0.0` で listen させ、他コンテナから Docker ネットワーク越しに接続できるようにするため）を `clickhouse-config.d/` にバインドマウントしている
 - **langfuse-observability plugin** — 公式マーケットプレイス（`anthropics/claude-plugins-official` 掲載、実体は `langfuse/claude-observability-plugin`）からインストール。Stop/SessionEnd hook で `claude` CLI のセッションを incrementally 読み取り、ターンごとに Langfuse へ trace を送信する
 - **langfuse-cli** — 公式の npm 版 CLI（`langfuse/langfuse-cli`）をグローバルインストール
 - **langfuse skill** — 公式マーケットプレイスの `langfuse` plugin（実体は `langfuse/skills.git`）。trace/prompt/dataset を Langfuse API 経由でクエリできる skill
