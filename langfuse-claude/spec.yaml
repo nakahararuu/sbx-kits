@@ -101,13 +101,13 @@ commands:
         REDIS_AUTH=$(openssl rand -hex 16)
         MINIO_ROOT_PASSWORD=$(openssl rand -hex 16)
         LANGFUSE_INIT_ORG_ID=claude-code
-        LANGFUSE_INIT_ORG_NAME=Claude Code
+        LANGFUSE_INIT_ORG_NAME="Claude Code"
         LANGFUSE_INIT_PROJECT_ID=claude-code-telemetry
-        LANGFUSE_INIT_PROJECT_NAME=Claude Code Telemetry
+        LANGFUSE_INIT_PROJECT_NAME="Claude Code Telemetry"
         LANGFUSE_INIT_PROJECT_PUBLIC_KEY=${LF_PUBLIC_KEY}
         LANGFUSE_INIT_PROJECT_SECRET_KEY=${LF_SECRET_KEY}
         LANGFUSE_INIT_USER_EMAIL=claude@sandbox.local
-        LANGFUSE_INIT_USER_NAME=Claude Code
+        LANGFUSE_INIT_USER_NAME="Claude Code"
         LANGFUSE_INIT_USER_PASSWORD=$(openssl rand -hex 16)
         EOF
 
