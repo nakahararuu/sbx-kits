@@ -40,6 +40,11 @@ sbx run claude --kit /path/to/langfuse-claude/
   ```
 - ログイン情報（メールアドレス・パスワード）は `/opt/langfuse/.env` の `LANGFUSE_INIT_USER_EMAIL` / `LANGFUSE_INIT_USER_PASSWORD` を参照してください
 
+`langfuse-cli` を使う際の注意点（実際にハマったポイント）:
+- 必ず `http://localhost:3000` 経由でアクセスしてください。コンテナの Docker ネットワーク IP（`172.x.x.x` 等）への直接アクセスはサンドボックスのネットワークポリシーでブロックされます（`LANGFUSE_HOST` / `LANGFUSE_BASE_URL` は最初から `localhost` を指しているので、これらを上書きしない限り問題になりません）
+- Langfuse v4 は `events_only` モードで動くため、v3 の `traces list` コマンドはエラーになります。代わりに `observations list` を使ってください
+- オプション名はハイフン区切りです（`--from-timestamp`）。キャメルケースの `--fromTimestamp` は失敗します
+
 ## トラブルシューティング
 
 - トレースが出ない場合、まず `~/.claude/state/langfuse_hook.log` を確認してください（plugin は fail-open 設計のため、Langfuse 未起動や鍵不整合、`uv` 未検出などがあっても `claude` の動作自体は止まりません）

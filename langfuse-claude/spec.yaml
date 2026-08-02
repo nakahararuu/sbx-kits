@@ -44,7 +44,15 @@ agentContext: |
     hooks upload each turn in the background; nothing else is required.
   - To query traces/prompts/datasets back (e.g. "what did the last run cost?"), ask
     Claude directly — the `langfuse` skill activates automatically — or run
-    `langfuse-cli` yourself.
+    `langfuse-cli` yourself. A few `langfuse-cli` specifics learned the hard way:
+    - Always reach it at `http://localhost:3000`. The sandbox's network policy
+      blocks direct access to the Langfuse container's Docker-network IP
+      (e.g. `172.x.x.x`) — `LANGFUSE_HOST`/`LANGFUSE_BASE_URL` are already set to
+      `localhost`, so this only bites if something overrides them.
+    - Langfuse v4 runs in `events_only` mode, where the v3 `traces list` command
+      errors out; use `observations list` instead.
+    - Flags are hyphenated (`--from-timestamp`), not camelCase
+      (`--fromTimestamp` fails).
   - Only `claude` CLI sessions and desktop **Code mode** are traced — regular Claude
     Desktop **Chat mode** does not invoke Claude Code hooks and is never captured.
   - Langfuse's web UI listens on container port 3000. This kit-spec version has no
@@ -376,9 +384,15 @@ commands:
         export LANGFUSE_PUBLIC_KEY=${LANGFUSE_INIT_PROJECT_PUBLIC_KEY}
         export LANGFUSE_SECRET_KEY=${LANGFUSE_INIT_PROJECT_SECRET_KEY}
         export LANGFUSE_BASE_URL=http://localhost:3000
+        export LANGFUSE_HOST=http://localhost:3000
         EOF
       user: "0"
-      description: Install the official langfuse-cli and persist LANGFUSE_* env vars so Claude itself (not just the browser) can query the local Langfuse instance
+      description: >-
+        Install the official langfuse-cli and persist LANGFUSE_* env vars so
+        Claude itself (not just the browser) can query the local Langfuse
+        instance. Both LANGFUSE_BASE_URL (the langfuse skill's convention)
+        and LANGFUSE_HOST (langfuse-cli's convention) are set to the same
+        value since the two tools don't agree on a variable name.
     - command: |
         set -e
         claude plugin marketplace add anthropics/claude-plugins-official
