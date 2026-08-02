@@ -272,7 +272,7 @@ commands:
       description: Generate local-only secrets and write the Langfuse docker-compose stack to /opt/langfuse
     - command: |
         set -e
-        source /opt/langfuse/.env
+        . /opt/langfuse/.env
         claude plugin marketplace add langfuse/Claude-Observability-Plugin
         claude plugin install langfuse-observability@langfuse-observability \
           --config LANGFUSE_PUBLIC_KEY="${LANGFUSE_INIT_PROJECT_PUBLIC_KEY}" \
@@ -282,7 +282,7 @@ commands:
       description: Install the official langfuse-observability Claude Code plugin, pointed at the local Langfuse instance
     - command: |
         set -e
-        source /opt/langfuse/.env
+        . /opt/langfuse/.env
         npm install -g langfuse-cli
         cat >> /etc/sandbox-persistent.sh <<EOF
         export LANGFUSE_PUBLIC_KEY=${LANGFUSE_INIT_PROJECT_PUBLIC_KEY}
