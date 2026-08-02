@@ -69,6 +69,10 @@ agentContext: |
     Claude Code, it just skips tracing and logs why).
   - Langfuse containers not (yet) healthy: `docker compose -f /opt/langfuse/docker-compose.yml ps`.
     `clickhouse` and `postgres` take the longest to become healthy on a cold first boot.
+  - No containers running at all: `commands.startup` may have run before the Docker
+    socket was ready and failed outright. Check `cat /var/log/sbx-kit-startup.log` for
+    `dial unix /var/run/docker.sock`. Recover with
+    `cd /opt/langfuse && docker compose up -d` — `.env` from install is still there.
   - This kit does not touch Claude Code's separate native OpenTelemetry metrics/logs
     exporter (`CLAUDE_CODE_ENABLE_TELEMETRY`) — it only wires the Langfuse plugin's
     hook-based LLM/tool tracing, which is what was asked for.
@@ -115,7 +119,7 @@ commands:
           settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
         } catch (e) {}
         settings.pluginConfigs = settings.pluginConfigs || {};
-        settings.pluginConfigs["langfuse-observability@langfuse-observability"] = {
+        settings.pluginConfigs["langfuse-observability@claude-plugins-official"] = {
           options: {
             LANGFUSE_PUBLIC_KEY: process.env.LANGFUSE_INIT_PROJECT_PUBLIC_KEY,
             LANGFUSE_SECRET_KEY: process.env.LANGFUSE_INIT_PROJECT_SECRET_KEY,
@@ -368,10 +372,16 @@ commands:
         so they live in commands.initFiles instead.
     - command: |
         set -e
-        claude plugin marketplace add langfuse/Claude-Observability-Plugin
-        claude plugin install langfuse-observability@langfuse-observability
+        claude plugin marketplace add anthropics/claude-plugins-official
+        claude plugin install langfuse-observability@claude-plugins-official
       user: "1000"
-      description: Install the official langfuse-observability Claude Code plugin (unconfigured; configured in the next step)
+      description: >-
+        Install the official langfuse-observability Claude Code plugin
+        (unconfigured; configured in the next step). It's listed in the
+        same anthropics/claude-plugins-official marketplace as the
+        langfuse skill installed further down, so one marketplace add
+        covers both — no separate langfuse/Claude-Observability-Plugin
+        marketplace needed.
     - command: |
         set -e
         . /opt/langfuse/.env
@@ -406,10 +416,13 @@ commands:
         value since the two tools don't agree on a variable name.
     - command: |
         set -e
-        claude plugin marketplace add anthropics/claude-plugins-official
         claude plugin install langfuse@claude-plugins-official
       user: "1000"
-      description: Install the official langfuse skill (query traces/prompts/datasets via the Langfuse API), reading the LANGFUSE_* env vars set above
+      description: >-
+        Install the official langfuse skill (query traces/prompts/datasets
+        via the Langfuse API), reading the LANGFUSE_* env vars set above.
+        The marketplace was already added by the langfuse-observability
+        install step above.
   startup:
     - command:
         - bash

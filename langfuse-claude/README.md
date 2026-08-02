@@ -5,9 +5,9 @@ Claude Code のセッション（LLM呼び出し・ツール呼び出し・ト�
 ## インストール内容
 
 - **Langfuse スタック** — 公式の `docker-compose.yml`（langfuse-web / langfuse-worker / postgres / clickhouse / redis / minio）を `/opt/langfuse` に配置し、サンドボックス起動のたびに `docker compose up -d` で起動。ClickHouse には単一ノード用の Keeper/`cluster.xml`（Langfuse v4 のマイグレーションが要求する `ON CLUSTER default` DDL に対応するため）と `listen.xml`（`0.0.0.0` で listen させ、他コンテナから Docker ネットワーク越しに接続できるようにするため）を `clickhouse-config.d/` にバインドマウントしている
-- **langfuse-observability plugin** — 公式マーケットプレイス（`anthropics/claude-plugins-official` 掲載、実体は `langfuse/claude-observability-plugin`）からインストール。Stop/SessionEnd hook で `claude` CLI のセッションを incrementally 読み取り、ターンごとに Langfuse へ trace を送信する
+- **langfuse-observability plugin** — 公式マーケットプレイス `anthropics/claude-plugins-official` からインストール（実体は `langfuse/claude-observability-plugin`）。Stop/SessionEnd hook で `claude` CLI のセッションを incrementally 読み取り、ターンごとに Langfuse へ trace を送信する
 - **langfuse-cli** — 公式の npm 版 CLI（`langfuse/langfuse-cli`）をグローバルインストール
-- **langfuse skill** — 公式マーケットプレイスの `langfuse` plugin（実体は `langfuse/skills.git`）。trace/prompt/dataset を Langfuse API 経由でクエリできる skill
+- **langfuse skill** — 同じ `anthropics/claude-plugins-official` マーケットプレイスの `langfuse` plugin（実体は `langfuse/skills.git`）。trace/prompt/dataset を Langfuse API 経由でクエリできる skill
 
 収集したテレメトリは、ホストのブラウザ（Web UI）と、サンドボックス内の `claude` 自身（langfuse-cli / langfuse skill 経由）の両方から参照できます。`LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_BASE_URL` は `/etc/sandbox-persistent.sh` に export されており、`claude` が実行するコマンドすべてに自動で渡ります。
 
@@ -44,12 +44,6 @@ sbx run claude --kit /path/to/langfuse-claude/
 - 必ず `http://localhost:3000` 経由でアクセスしてください。コンテナの Docker ネットワーク IP（`172.x.x.x` 等）への直接アクセスはサンドボックスのネットワークポリシーでブロックされます（`LANGFUSE_HOST` / `LANGFUSE_BASE_URL` は最初から `localhost` を指しているので、これらを上書きしない限り問題になりません）
 - Langfuse v4 は `events_only` モードで動くため、v3 の `traces list` コマンドはエラーになります。代わりに `observations list` を使ってください
 - オプション名はハイフン区切りです（`--from-timestamp`）。キャメルケースの `--fromTimestamp` は失敗します
-
-## トラブルシューティング
-
-- トレースが出ない場合、まず `~/.claude/state/langfuse_hook.log` を確認してください（plugin は fail-open 設計のため、Langfuse 未起動や鍵不整合、`uv` 未検出などがあっても `claude` の動作自体は止まりません）
-- Langfuse コンテナの起動状況: `docker compose -f /opt/langfuse/docker-compose.yml ps`（`clickhouse` と `postgres` は初回起動時に healthy になるまで時間がかかります）
-- コンテナが1つも起動していない場合、`commands.startup` が Docker ソケットの準備前に走ってしまい失敗した可能性があります。`cat /var/log/sbx-kit-startup.log` で `dial unix /var/run/docker.sock` のようなエラーが無いか確認してください。このケースでは `cd /opt/langfuse && docker compose up -d` を手動で実行すれば復旧できます（`.env` はサンドボックス作成時に作られたまま残っているはずです）
 
 ## ネットワーク
 
