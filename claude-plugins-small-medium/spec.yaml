@@ -1,7 +1,7 @@
 schemaVersion: "2"
 kind: mixin
-name: claude-dev-plugins
-displayName: Claude Code Dev Plugins
+name: claude-plugins-small-medium
+displayName: Claude Code Plugins (Small–Medium Dev)
 description: Installs a curated set of official Claude Code plugins (context7, feature-dev, code-review, pr-review-toolkit, commit-commands, security-guidance, serena) for small-to-medium development workflows
 
 caps:

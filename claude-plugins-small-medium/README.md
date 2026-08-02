@@ -1,6 +1,6 @@
-# claude-dev-plugins
+# claude-plugins-small-medium
 
-小〜中規模の開発ワークフロー向けに、Claude Code の公式マーケットプレイス（`anthropics/claude-plugins-official`）から厳選した plugin をインストールする mixin kit。
+小〜中規模の開発ワークフロー向けに、Claude Code の公式マーケットプレイス（`anthropics/claude-plugins-official`）から厳選した plugin をインストールする mixin kit。大規模開発向けの構成は別 kit として用意する想定のため、対象規模をわかるように kit 名に含めている。
 
 ## インストール内容
 
@@ -30,7 +30,7 @@
 ## 使い方
 
 ```bash
-sbx run claude --kit /path/to/claude-dev-plugins/
+sbx run claude --kit /path/to/claude-plugins-small-medium/
 ```
 
 see: https://docs.docker.com/ai/sandboxes/customize/kits/
