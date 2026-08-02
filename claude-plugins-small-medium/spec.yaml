@@ -37,9 +37,4 @@ commands:
         set -e
         claude mcp add -s user serena -- uv tool run --from git+https://github.com/oraios/serena serena start-mcp-server
       user: "1000"
-      description: >-
-        Register serena directly as a user-scoped MCP server (not via the
-        marketplace plugin — its .mcp.json still uses `uvx --from ...`, which
-        breaks on uv >=0.9.0 now that `uvx` is a full alias for `uv` itself
-        rather than `uv tool run`; `uv tool run --from ...` is the current
-        equivalent)
+      description: Register serena as a user MCP server (the marketplace plugin is unmaintained and broken)
