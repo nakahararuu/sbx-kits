@@ -6,6 +6,10 @@ Claude Code のセッション（LLM呼び出し・ツール呼び出し・ト�
 
 - **Langfuse スタック** — 公式の `docker-compose.yml`（langfuse-web / langfuse-worker / postgres / clickhouse / redis / minio）を `/opt/langfuse` に配置し、サンドボックス起動のたびに `docker compose up -d` で起動
 - **langfuse-observability plugin** — 公式マーケットプレイス（`anthropics/claude-plugins-official` 掲載、実体は `langfuse/claude-observability-plugin`）からインストール。Stop/SessionEnd hook で `claude` CLI のセッションを incrementally 読み取り、ターンごとに Langfuse へ trace を送信する
+- **langfuse-cli** — 公式の npm 版 CLI（`langfuse/langfuse-cli`）をグローバルインストール
+- **langfuse skill** — 公式マーケットプレイスの `langfuse` plugin（実体は `langfuse/skills.git`）。trace/prompt/dataset を Langfuse API 経由でクエリできる skill
+
+収集したテレメトリは、ホストのブラウザ（Web UI）と、サンドボックス内の `claude` 自身（langfuse-cli / langfuse skill 経由）の両方から参照できます。`LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_BASE_URL` は `/etc/sandbox-persistent.sh` に export されており、`claude` が実行するコマンドすべてに自動で渡ります。
 
 ## 認証情報の扱い
 

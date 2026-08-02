@@ -32,9 +32,19 @@ agentContext: |
     docker-amd64 kit's README for the same constraint). `docker compose up -d` is
     idempotent, so this is safe to re-run on every start.
 
+  This kit also lets Claude itself read the telemetry back, not just a human via the
+  browser: the official `langfuse-cli` (npm) and the official `langfuse` skill (from
+  `anthropics/claude-plugins-official`, source `langfuse/skills.git`) are installed
+  too, and `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_BASE_URL` are
+  exported via `/etc/sandbox-persistent.sh` (sourced before every shell command) so
+  both can query the same local instance without extra setup.
+
   Usage:
   - Just use `claude` normally. The `langfuse-observability` plugin's Stop/SessionEnd
     hooks upload each turn in the background; nothing else is required.
+  - To query traces/prompts/datasets back (e.g. "what did the last run cost?"), ask
+    Claude directly — the `langfuse` skill activates automatically — or run
+    `langfuse-cli` yourself.
   - Only `claude` CLI sessions and desktop **Code mode** are traced — regular Claude
     Desktop **Chat mode** does not invoke Claude Code hooks and is never captured.
   - Langfuse's web UI listens on container port 3000. This kit-spec version has no
@@ -65,6 +75,8 @@ caps:
       # uv downloads the Langfuse Python SDK from PyPI on the hook's first run
       - pypi.org
       - files.pythonhosted.org
+      # npm install of the official langfuse-cli
+      - registry.npmjs.org
       # Chainguard registry — the compose stack's minio image is
       # cgr.dev/chainguard/minio. Verified by testing: plain docker.io pulls
       # succeed with no allowlist entry at all (same as the docker-amd64 kit),
@@ -272,6 +284,23 @@ commands:
           --config LANGFUSE_BASE_URL="http://localhost:3000"
       user: "1000"
       description: Install the official langfuse-observability Claude Code plugin, pointed at the local Langfuse instance
+    - command: |
+        set -e
+        source /opt/langfuse/.env
+        npm install -g langfuse-cli
+        cat >> /etc/sandbox-persistent.sh <<EOF
+        export LANGFUSE_PUBLIC_KEY=${LANGFUSE_INIT_PROJECT_PUBLIC_KEY}
+        export LANGFUSE_SECRET_KEY=${LANGFUSE_INIT_PROJECT_SECRET_KEY}
+        export LANGFUSE_BASE_URL=http://localhost:3000
+        EOF
+      user: "0"
+      description: Install the official langfuse-cli and persist LANGFUSE_* env vars so Claude itself (not just the browser) can query the local Langfuse instance
+    - command: |
+        set -e
+        claude plugin marketplace add anthropics/claude-plugins-official
+        claude plugin install langfuse@claude-plugins-official
+      user: "1000"
+      description: Install the official langfuse skill (query traces/prompts/datasets via the Langfuse API), reading the LANGFUSE_* env vars set above
   startup:
     - command:
         - bash
