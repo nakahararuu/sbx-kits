@@ -35,10 +35,6 @@ mise のコア plugin 実装(`jdx/mise` の `src/plugins/core/{node,go,python,ja
 | `oracle` / `oracle-graalvm` | `download.oracle.com` |
 | `redhat` | `developers.redhat.com` |
 
-## credentials について
-
-mise は `mise.local.toml`(`[env]` で環境変数を定義できる、コミットしないためのローカル上書きファイル)を使った secrets 管理もサポートしていますが、この kit はそこには一切関与しません。ネットワークの allow のみです。サンドボックス内に credentials を持ち込まない、という基盤の方針に沿って、実際の secrets は kit-spec の `credentials:` ブロック(proxy 側で管理され、コンテナ内に平文で書かれない)経由で注入することを推奨します。
-
 ## 使い方
 
 ```bash
@@ -52,7 +48,3 @@ mise use -g node@lts golang@latest python@latest java@openjdk-21
 ```
 
 いずれの言語も、network policy に阻まれずに install できれば成功。
-
-## 動作確認済み環境
-
-- 本 README・spec.yaml の domain 一覧は、`jdx/mise` のソースコード(tag: 該当バージョン時点の `main`)の読み込みと、このモノレポの kit-dev サンドボックス上での実通信確認(`curl`、network policy を一時的に緩めた上でのリダイレクト先確認)に基づく。実際の `mise install` を通した end-to-end 検証は未実施のため、allowlist に漏れがあれば `sbx policy log` で block されたドメインを確認し追記してください。
