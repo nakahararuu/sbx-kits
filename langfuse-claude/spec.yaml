@@ -132,6 +132,10 @@ commands:
     - command: |
         set -e
         mkdir -p /opt/langfuse/clickhouse-config.d
+        # commands.initFiles (listen.xml, write-plugin-config.js) writes into
+        # these same directories as a non-root user, so they need to be
+        # world-writable — not just the default root-owned 0755 from mkdir.
+        chmod 777 /opt/langfuse /opt/langfuse/clickhouse-config.d
         cd /opt/langfuse
 
         LF_PUBLIC_KEY="pk-lf-$(openssl rand -hex 16)"
@@ -361,7 +365,6 @@ commands:
         EOF
 
         chmod 644 .env docker-compose.yml clickhouse-config.d/cluster.xml
-        chmod 755 clickhouse-config.d
       user: "0"
       description: >-
         Generate local-only secrets, then write the three files whose content
