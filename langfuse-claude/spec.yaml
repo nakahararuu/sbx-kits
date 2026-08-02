@@ -274,14 +274,45 @@ commands:
       description: Generate local-only secrets and write the Langfuse docker-compose stack to /opt/langfuse
     - command: |
         set -e
-        . /opt/langfuse/.env
         claude plugin marketplace add langfuse/Claude-Observability-Plugin
-        claude plugin install langfuse-observability@langfuse-observability \
-          --config LANGFUSE_PUBLIC_KEY="${LANGFUSE_INIT_PROJECT_PUBLIC_KEY}" \
-          --config LANGFUSE_SECRET_KEY="${LANGFUSE_INIT_PROJECT_SECRET_KEY}" \
-          --config LANGFUSE_BASE_URL="http://localhost:3000"
+        claude plugin install langfuse-observability@langfuse-observability
       user: "1000"
-      description: Install the official langfuse-observability Claude Code plugin, pointed at the local Langfuse instance
+      description: Install the official langfuse-observability Claude Code plugin (unconfigured; configured in the next step)
+    - command: |
+        set -e
+        . /opt/langfuse/.env
+        export LANGFUSE_INIT_PROJECT_PUBLIC_KEY LANGFUSE_INIT_PROJECT_SECRET_KEY
+        cat > /tmp/langfuse-plugin-config.js <<'EOF'
+        const fs = require("fs");
+        const path = require("path");
+        const settingsPath = path.join(process.env.HOME, ".claude", "settings.json");
+        let settings = {};
+        try {
+          settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
+        } catch (e) {}
+        settings.pluginConfigs = settings.pluginConfigs || {};
+        settings.pluginConfigs["langfuse-observability@langfuse-observability"] = {
+          options: {
+            LANGFUSE_PUBLIC_KEY: process.env.LANGFUSE_INIT_PROJECT_PUBLIC_KEY,
+            LANGFUSE_SECRET_KEY: process.env.LANGFUSE_INIT_PROJECT_SECRET_KEY,
+            LANGFUSE_BASE_URL: "http://localhost:3000",
+          },
+        };
+        fs.mkdirSync(path.dirname(settingsPath), { recursive: true });
+        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+        EOF
+        node /tmp/langfuse-plugin-config.js
+        rm -f /tmp/langfuse-plugin-config.js
+      user: "1000"
+      description: >-
+        Write the langfuse-observability plugin's config directly to
+        ~/.claude/settings.json instead of `claude plugin install --config`.
+        The plugin marks LANGFUSE_SECRET_KEY as keychain-stored, but this
+        sandbox has no OS keychain daemon; routing it through
+        `--config` was clobbering ~/.claude/.credentials.json (the same
+        file the base agent's OAuth session lives in), breaking login.
+        Writing plaintext options directly to settings.json is the
+        plugin's own documented bypass for keychain-less environments.
     - command: |
         set -e
         . /opt/langfuse/.env

@@ -21,7 +21,9 @@ Claude Code のセッション（LLM呼び出し・ツール呼び出し・ト�
 - Langfuse の `NEXTAUTH_SECRET` / `SALT` / `ENCRYPTION_KEY`
 - Langfuse プロジェクトの API キーペア（`pk-lf-...` / `sk-lf-...`）
 
-生成した API キーペアは、Langfuse 側の初回起動時プロビジョニング（`LANGFUSE_INIT_PROJECT_PUBLIC_KEY` / `LANGFUSE_INIT_PROJECT_SECRET_KEY`）と、plugin 側の設定（`claude plugin install ... --config LANGFUSE_PUBLIC_KEY=... --config LANGFUSE_SECRET_KEY=...`）の両方に同じ値を渡すことで、Langfuse の API を呼ばずに鍵を一致させています。
+生成した API キーペアは、Langfuse 側の初回起動時プロビジョニング（`LANGFUSE_INIT_PROJECT_PUBLIC_KEY` / `LANGFUSE_INIT_PROJECT_SECRET_KEY`）と langfuse-observability plugin の設定の両方に同じ値を渡すことで、Langfuse の API を呼ばずに鍵を一致させています。
+
+plugin 側の設定は `claude plugin install ... --config` ではなく、`~/.claude/settings.json` の `pluginConfigs` に直接書き込んでいます。`--config` で `LANGFUSE_SECRET_KEY` を渡すと plugin 側の実装は「OS キーチェーンに保存」しようとしますが、このサンドボックスには実体のある OS キーチェーンが無く、Claude Code 本体の OAuth セッションが入っている `~/.claude/.credentials.json` を巻き込んで壊してしまい、ログインセッションが切れる不具合がありました。設定を直接 `settings.json` に書き込むのは、plugin の README 自身がキーチェーンの効かない環境向けに案内している回避策と同じ方法です。
 
 ## 使い方
 
