@@ -51,9 +51,9 @@ sbx run claude --kit /path/to/langfuse-claude/
 |------|----------|
 | plugin marketplace 追加・インストール（GitHub） | `github.com`, `api.github.com`, `objects.githubusercontent.com` |
 | Langfuse Python SDK の初回ダウンロード（`uv run --script` 経由） | `pypi.org`, `files.pythonhosted.org` |
-| minio イメージ（`cgr.dev/chainguard/minio`）の pull | `cgr.dev` |
+| minio イメージ（`cgr.dev/chainguard/minio`）の pull | `cgr.dev`, `*.r2.cloudflarestorage.com` |
 
-Docker イメージの pull は `commands.startup` 内の `docker compose up -d` で行われます（`commands.install` の時点では Docker ソケットがまだマウントされておらず `docker` コマンドが使えないため）。`docker.io` からの pull（`langfuse/*`, `clickhouse/clickhouse-server`, `redis`, `postgres`）には `caps.network.allow` へのエントリは不要ですが、`cgr.dev`（minio イメージのレジストリ）は別ホストなので上表のとおり明示的に allow しています。
+Docker イメージの pull は `commands.startup` 内の `docker compose up -d` で行われます（`commands.install` の時点では Docker ソケットがまだマウントされておらず `docker` コマンドが使えないため）。`docker.io` からの pull（`langfuse/*`, `clickhouse/clickhouse-server`, `redis`, `postgres`）には `caps.network.allow` へのエントリは不要ですが、`cgr.dev`（minio イメージのレジストリ）は別ホストなので上表のとおり明示的に allow しています。`cgr.dev` はマニフェスト解決のみを担当し、実際のイメージレイヤーは `*.r2.cloudflarestorage.com`（Cloudflare R2、Chainguard のブロブストレージ backend）にリダイレクトされるため、そちらも allow が必要です。
 
 ## スコープ外
 

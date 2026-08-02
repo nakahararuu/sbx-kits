@@ -80,6 +80,8 @@ caps:
       # Chainguard registry — the compose stack's minio image is
       # cgr.dev/chainguard/minio, a distinct registry host from docker.io.
       - cgr.dev
+      # cgr.dev's blob storage backend (image layers redirect here)
+      - "*.r2.cloudflarestorage.com"
 
 commands:
   install:
