@@ -16,6 +16,14 @@ caps:
       # Java (default "openjdk" vendor)
       - mise-java.jdx.dev
       - download.java.net
+      # Java vendor-specific CDNs (zulu, liberica/liberica-nik, jetbrains,
+      # microsoft, oracle/oracle-graalvm, redhat)
+      - cdn.azul.com
+      - download.bell-sw.com
+      - cache-redirector.jetbrains.com
+      - aka.ms
+      - download.oracle.com
+      - developers.redhat.com
       # Shared: go version listing (git ls-remote), python-build-standalone
       # releases + assets, most non-default java vendors
       - github.com

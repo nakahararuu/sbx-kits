@@ -23,17 +23,14 @@ mise のコア plugin 実装(`jdx/mise` の `src/plugins/core/{node,go,python,ja
 | Java 本体(デフォルト vendor = `openjdk`) | `download.java.net` | `java.shorthand_vendor` のデフォルトはこの vendor(実際のJSONレスポンスで確認済み) |
 | Python 本体(precompiled、Linux x86_64/arm64のデフォルト経路) | `github.com`, `api.github.com`, `objects.githubusercontent.com` | astral-sh/python-build-standalone の GitHub Releases。releases API 一覧は `api.github.com`、`github.com/.../releases/download/...` は `objects.githubusercontent.com` へ 302 することを実際に確認済み |
 | Java 本体(`temurin` 等 GitHub Releases 系 vendor) | 同上 | vendor 一覧の実データで `github.com`/`objects.githubusercontent.com` 配下と確認 |
+| Java 本体(`zulu` vendor) | `cdn.azul.com` | |
+| Java 本体(`liberica` / `liberica-nik` vendor) | `download.bell-sw.com` | |
+| Java 本体(`jetbrains` vendor) | `cache-redirector.jetbrains.com` | |
+| Java 本体(`microsoft` vendor) | `aka.ms` | |
+| Java 本体(`oracle` / `oracle-graalvm` vendor) | `download.oracle.com` | |
+| Java 本体(`redhat` vendor) | `developers.redhat.com` | |
 
-上記の JSON で確認できた Java vendor のうち、GitHub 系でも `download.java.net` でもない **vendor 固有 CDN** は意図的に allowlist に入れていません。それらの vendor を pin する場合は追加してください。
-
-| vendor | ドメイン |
-|--------|----------|
-| `zulu` | `cdn.azul.com` |
-| `liberica` / `liberica-nik` | `download.bell-sw.com` |
-| `jetbrains` | `cache-redirector.jetbrains.com` |
-| `microsoft` | `aka.ms` |
-| `oracle` / `oracle-graalvm` | `download.oracle.com` |
-| `redhat` | `developers.redhat.com` |
+上記は `mise-java.jdx.dev` の実データで確認できた Java vendor を全て allow 済み。
 
 ## 使い方
 
