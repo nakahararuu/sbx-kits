@@ -42,7 +42,7 @@ sbx run claude --kit /path/to/langfuse-claude/
 
 `langfuse-cli` を使う際の注意点（実際にハマったポイント）:
 - 必ず `http://localhost:3000` 経由でアクセスしてください。コンテナの Docker ネットワーク IP（`172.x.x.x` 等）への直接アクセスはサンドボックスのネットワークポリシーでブロックされます（`LANGFUSE_HOST` / `LANGFUSE_BASE_URL` は最初から `localhost` を指しているので、これらを上書きしない限り問題になりません）
-- Langfuse v4 は `events_only` モードで動くため、v3 の `traces list` コマンドはエラーになります。代わりに `observations list` を使ってください
+- Langfuse v4 のデフォルト書き込みモード（`events_only`）ではレガシー read API（`traces list` 含む）が使えず、エラーになります。代わりに `observations list` を使ってください。この制約自体は `langfuse` skill の `references/cli.md` にも「Cloud で `traces list` はタイムアウトしがちなので `observations list` を使う」という形で書かれています（[Langfuse の互換性ドキュメント](https://langfuse.com/docs/compatibility)にある通り、self-hosted v4 の `events_only` モードでは当該エンドポイント自体が使えなくなるため、私たちの環境ではタイムアウトではなく明確なエラーになります）
 - オプション名はハイフン区切りです（`--from-timestamp`）。キャメルケースの `--fromTimestamp` は失敗します
 
 ## ネットワーク
