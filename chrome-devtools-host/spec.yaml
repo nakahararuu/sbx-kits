@@ -86,7 +86,7 @@ commands:
       description: Install socat (host bridge) and jq (patching the plugin's MCP config)
     - command: |
         set -e
-        claude plugin marketplace add anthropics/claude-plugins-official
+        claude plugin marketplace add https://github.com/anthropics/claude-plugins-official.git
         claude plugin install chrome-devtools-mcp@claude-plugins-official
       user: "1000"
       description: Install the official chrome-devtools-mcp plugin

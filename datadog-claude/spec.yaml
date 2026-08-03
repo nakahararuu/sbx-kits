@@ -48,7 +48,7 @@ commands:
       user: "0"
       description: Install pup CLI
     - command: |
-        claude plugin marketplace add anthropics/claude-plugins-official
+        claude plugin marketplace add https://github.com/anthropics/claude-plugins-official.git
         claude plugin install datadog@claude-plugins-official
         claude plugin install slack@claude-plugins-official
       user: "1000"

@@ -66,7 +66,7 @@ claude plugin marketplace add https://github.com/nakahararuu/claude-plugins.git
 
 マーケットプレイス名は clone に使った URL ではなく `marketplace.json` 内の `name` フィールドで決まるため、`owner/repo` 省略記法から HTTPS フル URL に変更しても `claude plugin install <plugin>@<marketplace-name>` 側の参照名は変わらない。
 
-参考実装: `nakahararuu-claude-plugins/spec.yaml`。
+参考実装: `nakahararuu-claude-plugins/spec.yaml`、`claude-plugins-small-medium/spec.yaml`、`claude-documentation/spec.yaml`、`chrome-devtools-host/spec.yaml`、`datadog-claude/spec.yaml`、`langfuse-claude/spec.yaml`。
 
 ## 落とし穴: credentials（トークン注入）
 

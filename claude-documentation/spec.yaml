@@ -28,14 +28,14 @@ commands:
   install:
     - command: |
         set -e
-        claude plugin marketplace add anthropics/claude-plugins-official
+        claude plugin marketplace add https://github.com/anthropics/claude-plugins-official.git
         claude plugin install miro@claude-plugins-official
         claude plugin install slack@claude-plugins-official
       user: "1000"
       description: Install Miro and Slack plugins from the official Anthropic marketplace
     - command: |
         set -e
-        claude plugin marketplace add helpfeel/cosense-cli
+        claude plugin marketplace add https://github.com/helpfeel/cosense-cli.git
         claude plugin install cosense-cli@cosense-cli
       user: "1000"
       description: Install the Cosense (Scrapbox) skill plugin
