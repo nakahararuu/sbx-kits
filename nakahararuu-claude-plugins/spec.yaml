@@ -18,7 +18,7 @@ commands:
       description: Ensure jq is available
     - command: |
         set -e
-        claude plugin marketplace add https://github.com/nakahararuu/claude-plugins.git
+        claude plugin marketplace add nakahararuu/claude-plugins
         MARKETPLACE_JSON="$HOME/.claude/plugins/marketplaces/nakahararuu-claude-plugins/.claude-plugin/marketplace.json"
         for plugin in $(jq -r '.plugins[].name' "$MARKETPLACE_JSON"); do
           claude plugin install "${plugin}@nakahararuu-claude-plugins"

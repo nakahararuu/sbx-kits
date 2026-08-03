@@ -50,24 +50,6 @@ allowlist が不足しているドメインへの通信は、サンドボック�
 
 参考実装: `datadog-claude/spec.yaml`、`claude-documentation/spec.yaml`、`nakahararuu-claude-plugins/spec.yaml` の `network.allowedDomains` を参照。
 
-### 5. `claude plugin marketplace add owner/repo` の省略記法は SSH に解決されることがある
-
-`claude plugin marketplace add owner/repo` の `owner/repo` 省略記法は、内部で GitHub をどのプロトコル（HTTPS/SSH）で clone するかが公式ドキュメントに明記されておらず、`sbx run` を実行するホストマシンの git 設定（`url.insteadOf` の書き換えルールなど）によって SSH 経由の clone に解決されることがある。サンドボックスは SSH 用の `known_hosts` を持たない使い捨てコンテナなので、この場合 `commands.install` 実行中に `ssh host key is not in your known_hosts` のようなエラーで失敗する。マシンによって成功・失敗が分かれるのはこれが原因。
-
-回避策は、省略記法ではなく `.git` サフィックス付きの HTTPS フル URL を明示すること。これで常に HTTPS 経由になり、SSH には解決されなくなる。
-
-```bash
-# NG: ホストの git 設定次第で SSH に化けることがある
-claude plugin marketplace add nakahararuu/claude-plugins
-
-# OK: HTTPS を明示（.git サフィックス必須。無いと marketplace.json への直リンクとして解釈される）
-claude plugin marketplace add https://github.com/nakahararuu/claude-plugins.git
-```
-
-マーケットプレイス名は clone に使った URL ではなく `marketplace.json` 内の `name` フィールドで決まるため、`owner/repo` 省略記法から HTTPS フル URL に変更しても `claude plugin install <plugin>@<marketplace-name>` 側の参照名は変わらない。
-
-参考実装: `nakahararuu-claude-plugins/spec.yaml`。
-
 ## 落とし穴: credentials（トークン注入）
 
 APIキーやトークンをコンテナ内に注入する kit を作るときの設計:
