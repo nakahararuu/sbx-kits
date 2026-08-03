@@ -5,7 +5,8 @@
 ## インストール内容
 
 1. `jq` が無ければインストール（marketplace.json のパース用）
-2. `claude plugin marketplace add nakahararuu/claude-plugins` でマーケットプレイスを追加
+2. `claude plugin marketplace add https://github.com/nakahararuu/claude-plugins.git` でマーケットプレイスを追加
+   （`owner/repo` 省略記法だとホストマシンの git 設定によっては SSH 経由の clone に解決され、サンドボックス内に GitHub の SSH host key が `known_hosts` へ登録されておらず `git clone` が失敗することがあるため、`.git` 付きの HTTPS URL を明示して常に HTTPS 経由になるようにしている）
 3. 追加したマーケットプレイスのキャッシュ（`~/.claude/plugins/marketplaces/nakahararuu-claude-plugins/.claude-plugin/marketplace.json`）から plugin 名を `jq` で列挙し、1件ずつ `claude plugin install <name>@nakahararuu-claude-plugins` を実行
 
 plugin 名をハードコードせず動的に列挙してインストールしているため、`nakahararuu/claude-plugins` 側に plugin が追加されてもこの kit を更新する必要はない。
