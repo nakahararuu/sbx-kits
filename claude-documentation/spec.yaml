@@ -4,7 +4,7 @@ name: claude-documentation
 displayName: Claude Documentation Tools
 description: Adds Miro and Slack plugins from the official Anthropic marketplace, plus the Cosense (Scrapbox) skill and CLI
 
-caps:
+permissions:
   network:
     allow:
       # marketplace / plugin source install (GitHub)
@@ -24,7 +24,7 @@ caps:
       - scrapbox.io
       - "*.scrapbox.io"
 
-commands:
+setup:
   install:
     - command: |
         set -e

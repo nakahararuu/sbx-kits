@@ -4,13 +4,13 @@ name: ruff-lint
 displayName: Ruff Linter
 description: Python linting with shared team config
 
-caps:
+permissions:
   network:
     allow:
       - pypi.org
       - files.pythonhosted.org
 
-commands:
+setup:
   install:
     - command: "uv tool install ruff@latest"
       user: "1000"

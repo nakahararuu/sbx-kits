@@ -16,7 +16,7 @@ Docker Sandboxes の kit 仕様は公式ドキュメントに記載されてい�
 
 ## 落とし穴: network policy
 
-sandbox はデフォルトで送信通信を deny するため、kit が動かすツールが通信する先はすべて `network.allowedDomains` に明記する必要があります。公式ドキュメントには載っていないが、実際の kit 作成で頻繁にハマるポイントを以下にまとめます。
+sandbox はデフォルトで送信通信を deny するため、kit が動かすツールが通信する先はすべて `permissions.network.allow` に明記する必要があります。公式ドキュメントには載っていないが、実際の kit 作成で頻繁にハマるポイントを以下にまとめます。
 
 ### 1. 「インストール時」と「実行時」の両方のホストを洗い出す
 
@@ -39,16 +39,20 @@ kit がツールをインストールしてから実際に使うまでに、通�
 
 ### 4. 動作確認の方法
 
-network policy はサンドボックス内のプロキシが強制するものなので、`commands.install` に書いたコマンドをサンドボックスの外（手元のシェルなど）でそのまま実行しても検証にはなりません。かならず kit を実際にサンドボックスへ適用して確認してください。
+network policy はサンドボックス内のプロキシが強制するものなので、`setup.install` に書いたコマンドをサンドボックスの外（手元のシェルなど）でそのまま実行しても検証にはなりません。かならず kit を実際にサンドボックスへ適用して確認してください。
 
 ```bash
 sbx run <agent> --kit /path/to/kit/   # 新規サンドボックスを作成して kit を適用
 sbx kit add <sandbox名> /path/to/kit/ # 既存サンドボックスに kit を追加
 ```
 
-allowlist が不足しているドメインへの通信は、サンドボックス内で `commands.install` 実行中に HTTP 403 で拒否されます。エラーメッセージに出てくるホスト名を `network.allowedDomains` に追記し、`sbx kit add` などで再適用して再検証してください。
+allowlist が不足しているドメインへの通信は、サンドボックス内で `setup.install` 実行中に HTTP 403 で拒否されます。エラーメッセージに出てくるホスト名を `permissions.network.allow` に追記し、`sbx kit add` などで再適用して再検証してください。
 
-参考実装: `datadog-claude/spec.yaml`、`claude-documentation/spec.yaml`、`nakahararuu-claude-plugins/spec.yaml` の `network.allowedDomains` を参照。
+参考実装: `datadog-claude/spec.yaml`、`claude-documentation/spec.yaml`、`nakahararuu-claude-plugins/spec.yaml` の `permissions.network.allow` を参照。
+
+### 5. フィールド名は upstream の破壊的変更で変わることがある
+
+`docker/sbx-kits-contrib` は `schemaVersion: "2"` のままフィールド名を破壊的に変更することがある（2026-07 に `caps`→`permissions`、`commands`→`setup`、トップレベル `agentContext`→`agentInstructions.content` へリネームされた実績あり、"no legacy shims" 方針のため旧名は警告なくエラーになる）。「最近まで動いていたのに `field X not found in type spec.specFileV2` で急に壊れた」という報告を見たら、まず自分たちの `spec.yaml` の記述ミスを疑う前に upstream の SPEC-v2.md とこのリポジトリの実装がズレていないか確認すること。
 
 ## 落とし穴: credentials（トークン注入）
 
@@ -75,8 +79,8 @@ credentials:
 
 `apiKey.proxyManaged: true` を設定すると、コンテナ内の該当環境変数（例 `GITHUB_TOKEN`）には常にリテラル文字列 `proxy-managed` が入ります。実トークンはサンドボックス外のプロキシが、宣言した `inject[].domain` 宛のリクエストを流す瞬間に差し替えるため、コンテナのファイルシステムやプロセス一覧には一切現れません。トークンを埋め込む設定ファイル（`.npmrc` など）は、`${GITHUB_TOKEN}` のようなプレースホルダを書いておいて、ツール自身（npm 等）に実行時展開させる前提で作る。
 
-### 3. `commands.initFiles` の `content` は `${WORKDIR}` 以外のプレースホルダを受け付けない
+### 3. `setup.files` の `content` は `${WORKDIR}` 以外のプレースホルダを受け付けない
 
-`${GITHUB_TOKEN}` のようなトークン用プレースホルダを埋め込んだファイルを `commands.initFiles` で書こうとすると、`sbx kit validate` で `unsupported placeholder` エラーになります。トークンを含むファイルは `commands.install` のシェルコマンド（`cat`/`echo`/`jq` など）で書き出すこと。
+`${GITHUB_TOKEN}` のようなトークン用プレースホルダを埋め込んだファイルを `setup.files` で書こうとすると、`sbx kit validate` で `unsupported placeholder` エラーになります。トークンを含むファイルは `setup.install` のシェルコマンド（`cat`/`echo`/`jq` など）で書き出すこと。
 
 参考実装: `github-registries/spec.yaml`。

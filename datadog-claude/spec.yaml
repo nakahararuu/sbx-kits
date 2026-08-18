@@ -4,7 +4,7 @@ name: datadog-claude
 displayName: Datadog for Claude Code
 description: Datadog investigation toolkit for Claude Code — pup CLI, Claude Datadog plugin, Slack plugin, and agent skills
 
-caps:
+permissions:
   network:
     allow:
       # Datadog API/app (all regions)
@@ -25,7 +25,7 @@ caps:
       - slack.com
       - "*.slack.com"
 
-commands:
+setup:
   install:
     - command: |
         set -e

@@ -4,14 +4,15 @@ name: sbx-kit-dev
 displayName: sbx Kit Dev Tools
 description: Installs the sbx CLI so kits in this monorepo can be validated (sbx kit validate/inspect/pack) from inside the sandbox
 
-agentContext: |
-  This sandbox has the `sbx` CLI installed for developing Docker Sandboxes kits.
+agentInstructions:
+  content: |
+    This sandbox has the `sbx` CLI installed for developing Docker Sandboxes kits.
 
-  After editing any kit's `spec.yaml`, run `sbx kit validate <kit-dir>` before committing.
-  It catches schema errors and deprecated-field warnings (e.g. v1 `network.allowedDomains`
-  vs kit-spec v2 `caps.network.allow`) that are easy to miss by just reading the file.
+    After editing any kit's `spec.yaml`, run `sbx kit validate <kit-dir>` before committing.
+    It catches schema errors and deprecated-field warnings (e.g. v1 `network.allowedDomains`
+    vs kit-spec v2 `permissions.network.allow`) that are easy to miss by just reading the file.
 
-caps:
+permissions:
   network:
     allow:
       # latest-release lookup + asset download
@@ -19,7 +20,7 @@ caps:
       - github.com
       - objects.githubusercontent.com
 
-commands:
+setup:
   install:
     - command: |
         set -e
