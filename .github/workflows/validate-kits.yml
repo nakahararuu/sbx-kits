@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Same install logic as sbx-kit-dev/spec.yaml `commands.install`,
+      # Same install logic as sbx-kit-dev/spec.yaml `setup.install`,
       # kept in sync manually since GitHub Actions runners can't apply kits to themselves.
       - name: Install sbx CLI
         run: |

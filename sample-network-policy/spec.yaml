@@ -3,7 +3,7 @@ kind: mixin
 name: allow-specific-domains
 description: "Allow only specific domains for outbound network access"
 
-caps:
+permissions:
   network:
     allow:
       - api.example.com

@@ -4,7 +4,7 @@ name: claude-plugins-small-medium
 displayName: Claude Code Plugins (Small–Medium Dev)
 description: Installs a curated set of official Claude Code plugins (context7, feature-dev, code-review, pr-review-toolkit, commit-commands, security-guidance, serena) for small-to-medium development workflows
 
-caps:
+permissions:
   network:
     allow:
       # Official marketplace + plugin install (git clone, API, release assets)
@@ -20,7 +20,7 @@ caps:
       - context7.com
       - mcp.context7.com
 
-commands:
+setup:
   install:
     - command: |
         set -e

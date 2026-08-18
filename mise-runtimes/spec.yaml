@@ -4,7 +4,7 @@ name: mise-runtimes
 displayName: mise Language Runtime Domains
 description: Extends the mise kit (docker/sbx-kits-contrib) with the domains mise's core plugins need to install Java, Go, Python, and Node
 
-caps:
+permissions:
   network:
     allow:
       # Node
