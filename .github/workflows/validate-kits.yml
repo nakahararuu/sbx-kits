@@ -1,0 +1,83 @@
+name: Validate Kits
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "**/spec.yaml"
+      - ".github/workflows/validate-kits.yml"
+  pull_request:
+    paths:
+      - "**/spec.yaml"
+      - ".github/workflows/validate-kits.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: validate-kits-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      kits: ${{ steps.list.outputs.kits }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: List kit directories
+        id: list
+        run: |
+          set -euo pipefail
+          kits=$(find . -mindepth 2 -maxdepth 2 -name 'spec.yaml' \
+            | sed -E 's#^\./##; s#/spec\.yaml$##' \
+            | sort \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "kits=$kits" >> "$GITHUB_OUTPUT"
+          echo "Discovered kits: $kits"
+
+  validate:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        kit: ${{ fromJson(needs.discover.outputs.kits) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same install logic as sbx-kit-dev/spec.yaml `commands.install`,
+      # kept in sync manually since GitHub Actions runners can't apply kits to themselves.
+      - name: Install sbx CLI
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/sbx-cli-install
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64) ARCH_PATTERN="linux-amd64" ;;
+            aarch64|arm64) ARCH_PATTERN="linux-arm64" ;;
+            *) echo "Unsupported arch: $ARCH"; exit 1 ;;
+          esac
+          RELEASE_URL=$(curl -fsSL https://api.github.com/repos/docker/sbx-releases/releases/latest \
+            | grep browser_download_url \
+            | grep "DockerSandboxes-${ARCH_PATTERN}\.tar\.gz" \
+            | head -1 \
+            | cut -d'"' -f4)
+          curl -fsSL "$RELEASE_URL" | tar xz -C /tmp/sbx-cli-install docker-sbx/sbx
+          sudo install -m755 /tmp/sbx-cli-install/docker-sbx/sbx /usr/local/bin/sbx
+          rm -rf /tmp/sbx-cli-install
+
+      # WARN lines (e.g. deprecated v1 network.allowedDomains) are treated as
+      # failures too, matching the local PostToolUse hook's convention
+      # (.claude/hooks/validate-kit-spec.sh).
+      - name: sbx kit validate ${{ matrix.kit }}
+        run: |
+          set +e
+          output="$(sbx kit validate "${{ matrix.kit }}" 2>&1)"
+          status=$?
+          set -e
+          echo "$output"
+          if [[ $status -ne 0 ]] || grep -q '^WARN:' <<< "$output"; then
+            echo "::error::sbx kit validate ${{ matrix.kit }} failed"
+            exit 1
+          fi
