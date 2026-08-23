@@ -7,8 +7,10 @@ description: Lets Claude Code control the Chrome browser running on the host mac
 agentInstructions:
   content: |
     This sandbox is set up to control a Chrome browser running on the **host** machine
-    (not inside the sandbox) via the official `chrome-devtools-mcp` plugin
-    (anthropics/claude-plugins-official marketplace).
+    (not inside the sandbox) via the `chrome-devtools-mcp` plugin, installed directly
+    from its own marketplace in the upstream ChromeDevTools/chrome-devtools-mcp repo
+    (rather than the anthropics/claude-plugins-official mirror), so plugin updates and
+    bundled skills track upstream `main` as soon as they're published.
 
     Prerequisite (host side, one-time per host restart): the user must launch Chrome on
     the host with remote debugging bound to all interfaces:
@@ -29,8 +31,9 @@ agentInstructions:
     launch (at the cost of not having the user's normal cookies/extensions there).
 
     What this kit already did:
-    - Installed the official `chrome-devtools-mcp@claude-plugins-official` plugin
-      (appears as `plugin:chrome-devtools-mcp:chrome-devtools` in `claude mcp list`).
+    - Installed the `chrome-devtools-mcp@chrome-devtools-plugins` plugin directly from
+      the upstream ChromeDevTools/chrome-devtools-mcp repo's own marketplace (appears as
+      `plugin:chrome-devtools-mcp:chrome-devtools` in `claude mcp list`).
     - Patched that plugin's cached `.claude-plugin/plugin.json` to append
       `--browser-url=http://localhost:9222` to its launch args, so it connects to the
       host's Chrome instead of launching its own inside the sandbox. This patch is
@@ -55,7 +58,7 @@ agentInstructions:
        it manually with:
        `socat TCP-LISTEN:9222,fork,reuseaddr TCP:host.docker.internal:9222 &`
     2. Check whether the plugin's cached `plugin.json` still has `--browser-url` in its
-       args (`grep -r browser-url ~/.claude/plugins/cache/claude-plugins-official/chrome-devtools-mcp/*/.claude-plugin/plugin.json`);
+       args (`grep -r browser-url ~/.claude/plugins/cache/chrome-devtools-plugins/chrome-devtools-mcp/*/.claude-plugin/plugin.json`);
        if a plugin update reset it, re-run this kit's patch startup command, or restart
        the sandbox.
     3. `curl -s http://localhost:9222/json/version` — should return Chrome's version JSON
@@ -87,17 +90,17 @@ setup:
       description: Install socat (host bridge) and jq (patching the plugin's MCP config)
     - command: |
         set -e
-        claude plugin marketplace add anthropics/claude-plugins-official
-        claude plugin install chrome-devtools-mcp@claude-plugins-official
+        claude plugin marketplace add ChromeDevTools/chrome-devtools-mcp
+        claude plugin install chrome-devtools-mcp@chrome-devtools-plugins
       user: "1000"
-      description: Install the official chrome-devtools-mcp plugin
+      description: Install the chrome-devtools-mcp plugin directly from upstream (tracks latest skills/releases, not the anthropics mirror)
   startup:
     - command:
         - bash
         - -c
         - |
           set -e
-          PJ=$(find "$HOME/.claude/plugins/cache/claude-plugins-official/chrome-devtools-mcp" -path '*/.claude-plugin/plugin.json' 2>/dev/null | head -1)
+          PJ=$(find "$HOME/.claude/plugins/cache/chrome-devtools-plugins/chrome-devtools-mcp" -path '*/.claude-plugin/plugin.json' 2>/dev/null | head -1)
           if [ -n "$PJ" ] && ! grep -q -- '--browser-url=http://localhost:9222' "$PJ"; then
             jq '(.mcpServers["chrome-devtools"].args) |= (if index("--browser-url=http://localhost:9222") then . else . + ["--browser-url=http://localhost:9222"] end)' "$PJ" > "$PJ.tmp" && mv "$PJ.tmp" "$PJ"
           fi
