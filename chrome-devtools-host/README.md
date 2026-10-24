@@ -21,8 +21,19 @@ Chrome をリモートデバッグ有効・全interfaceバインドで起動し�
 
 ## インストール内容
 
-1. **公式 chrome-devtools-mcp plugin** — `claude plugin marketplace add anthropics/claude-plugins-official` → `claude plugin install chrome-devtools-mcp@claude-plugins-official`
+1. **公式 chrome-devtools-mcp plugin**（upstream のマーケットプレイスから直接）— `claude plugin marketplace add ChromeDevTools/chrome-devtools-mcp --sparse .claude-plugin skills` → `claude plugin install chrome-devtools-mcp@chrome-devtools-plugins`
 2. **ホスト側の Chrome への接続設定**（`lifecycle@1` の `startup` hook、2エントリ）— サンドボックス起動のたびに、①plugin がホスト側の Chrome に接続するようパッチし、②`localhost:9222 -> host.docker.internal:9222` の接続ブリッジ(`socat`、`background: true`)が起動していなければ起動する(いずれも idempotent)
+
+## なぜ `--sparse` を付けるのか（submodule 回避）
+
+upstream リポジトリには submodule `third_party/devtools-frontend`（github.com）があり、その中にさらに `build` / `buildtools` / `depot_tools` / `inspector_protocol` / `lldb-eval` / `llvm-project` / `clang-format` の submodule（すべて `chromium.googlesource.com`）がある（孫より深い submodule は無い）。Claude Code はマーケットプレイスを `git clone --depth 1 --recurse-submodules --shallow-submodules` で取得するので、`--sparse` が無いとこれらを全部 clone しようとする。
+
+- `chromium.googlesource.com` が許可されていないと 403 で clone が失敗し、Claude Code が SSH にフォールバックして `known_hosts` のエラーで終わる（表に出るのはこの SSH のエラーだけ）
+- 許可しても、llvm-project は「まず既定ブランチの先端を shallow clone し、固定コミットが無ければ改めて fetch する」ため 2 回取得され、計 2.7GB・2 分超になる。Claude Code の git タイムアウト（既定 120s、`CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS`）を超えて打ち切られる（sbx-kit-claude:2.1.267 で実測）
+
+`--sparse` で sparsePaths を指定すると、Claude Code は submodule を取らない `--filter=blob:none --no-checkout` + sparse-checkout で clone し、マーケットプレイスの更新時も `git submodule update` をスキップする。plugin に必要なのは `.claude-plugin/` と `skills/`（cone モードなのでトップレベルのファイルも入る）だけなので、これで足りる。upstream が `hooks/` や `agents/` などを plugin に追加したら sparse のパスにも足すこと。
+
+upstream の [#2835](https://github.com/ChromeDevTools/chrome-devtools-mcp/pull/2835)（`.gitmodules` の `fetchRecurseSubmodules = false` と、`npm run prepare` の sparse 化）はこの経路には効かない。`fetchRecurseSubmodules` は `git fetch` / `pull` の再帰だけを制御する設定で、`clone --recurse-submodules` には影響しない。
 
 ## なぜ plugin.json をパッチするのか
 
@@ -39,10 +50,10 @@ Chrome の DevTools WebSocket サーバーは `Host` ヘッダーが `localhost:
 | フェーズ | 用途 | ドメイン |
 |------|------|----------|
 | install | socat / jq の apt-get install（Ubuntu ミラーと、*-docker テンプレートが追加済みの Docker の apt リポジトリ） | `archive.ubuntu.com`, `security.ubuntu.com`, `ports.ubuntu.com`, `download.docker.com` |
-| install | 公式マーケットプレイス・plugin ソースの取得（git clone） | `github.com`, `api.github.com` |
+| install | upstream のマーケットプレイス・plugin ソースの取得（git clone。`--sparse` で submodule を取らないので `chromium.googlesource.com` は不要） | `github.com`, `api.github.com` |
 | runtime | ホストの Chrome DevTools ポートへの接続（socat 経由） | `localhost:9222` |
 | runtime | chrome-devtools-mcp の npx 解決（MCP サーバー起動時） | `registry.npmjs.org` |
-| runtime | plugin の更新（マーケットプレイスの git fetch） | `github.com`, `api.github.com` |
+| runtime | plugin の更新（マーケットプレイスの git fetch。sparsePaths があるので submodule update は走らない） | `github.com`, `api.github.com` |
 
 ## 使い方
 
