@@ -1,86 +1,152 @@
 ---
-description: Where to find sbx kit documentation when editing spec.yaml
-globs: ["**/spec.yaml"]
+description: Where to find sbx kit (kit-spec v3) documentation and known pitfalls when editing kits
+globs: ["*/*.yaml", "*/*.dockerfile", "*/*-context.md"]
 alwaysApply: false
 ---
 
-# Kit 仕様の情報源
+# Kit 仕様の情報源（kit-spec v3）
 
-`spec.yaml` を編集する際は、以下の情報源を参照してください。
+このリポジトリの kit はすべて **kit-spec v3** で書かれています。v2（`spec.yaml`、`permissions`、`setup`、`agentInstructions`）の知識で書くと strict decode で落ちるので、以下の情報源を参照してください。新規作成・移行の手順は `.claude/skills/kit-v3-author/SKILL.md` にまとめてあります。
 
 ## 公式ドキュメント
 
-Docker Sandboxes の kit 仕様は公式ドキュメントに記載されています：
+- 仕様本体: https://github.com/docker/sandbox-kit-spec/blob/main/docs/spec/SPEC-v3.md
+- capability ごとの仕様: https://github.com/docker/sandbox-kit-spec/tree/main/docs/spec/capabilities/com.docker.sandbox
+- v2→v3 のフィールド対応表: https://github.com/docker/sandbox-kit-spec/blob/main/skills/migrate-kit-to-v3/FIELD-MAPPING.md
+- ユーザーマニュアル: https://docs.docker.com/ai/sandboxes/customize/ （author / tool-mixins / patterns / capabilities / kit-sets / distribute）
+- 実例: docker/sbx-kits-contrib の **`v3` ブランチ**（main ブランチは v2 のままなので参照しないこと）
 
-- Kit の概要・種類（mixin/sandbox）・フィールド一覧: https://github.com/docker/sbx-kits-contrib/blob/main/spec/SPEC-v2.md
+仕様（SPEC-v3.md）と docs.docker.com が食い違う場合は、実際に使う `sbx` がサポートしている方（docs の capability 対応表）に合わせる。例: agent-context は `@2` もあるが、docs と contrib v3 は `@1` を使っているのでこのリポジトリも `@1`。
+
+## ファイル構成
+
+```text
+<kit>/
+├── <kit>.yaml          # 記述子。1行目は必ず `# syntax=docker/sandbox-kit:3`
+├── <kit>.dockerfile    # 任意。イメージに焼き込む内容（ファイル名の stem で自動検出）
+├── <kit>-context.md    # 任意。agent-context@1 の contentFile
+└── README.md
+```
+
+- ディレクトリ名と記述子のファイル名は一致させる（CI と `.claude/hooks/validate-kit-spec.sh` はこの規約で kit を見つける）。
+- mixin は `.dockerfile` が無くてもよい（宣言だけの kit になる）。
+
+## 検証方法
+
+`sbx kit validate` は v3 のソース kit を扱えない。kit frontend でビルドして検証する:
+
+```bash
+docker buildx build <kit> -f <kit>/<kit>.yaml --output type=cacheonly
+```
+
+kit ディレクトリ内のファイルを Edit/Write すると PostToolUse hook が自動でこれを実行し、失敗時は agent にフィードバックされる。CI（`.github/workflows/validate-kits.yml`）も同じコマンドで全 kit を検証している。
+
+ビルドが通っても、ネットワークや hook の挙動は実際のサンドボックスでしか確かめられない。動作確認は v3 workload と一緒に新規サンドボックスを作って行う（`sbx kit add` は既存の v3 サンドボックスに mixin を追加できないので作り直す）:
+
+```bash
+sbx run docker.io/docker/sbx-kit-claude:<tag> --kit ./<kit> .
+```
+
+## 落とし穴: v3 の書き方
+
+### 1. strict decode — v2 のフィールドが1つでも残ると失敗する
+
+トップレベルの `name:` は廃止（kit の識別子は参照 URL/イメージ名）。`permissions` / `setup` / `agentInstructions` / `credentials` はすべて `capabilities:` 配下の capability に置き換わる。キーは lowerCamelCase（`sourceUrl`、`apiKey`）。
+
+### 2. hook の環境変数は deny-by-default
+
+`lifecycle@1` の hook には `PATH` / `HOME` などの最低限しか渡らない。hook 本体や子プロセスが読む変数はすべてその hook の `env: [...]` に列挙する。特に **curl / npm / pip / uv / apt / `claude plugin install` などネットワークに出るコマンドはプロキシ変数が必要**なので `env: [HTTP_PROXY, HTTPS_PROXY, NO_PROXY]` を付ける。ワークスペースのパスは `env: [WORKSPACE_DIR]`（`files` の中なら `${{ kit.env.WORKSPACE_DIR }}`）。
+
+### 3. `background: true` は startup hook 専用
+
+install hook に `background` を書くと strict decode で落ちる。
+
+### 4. v2 の `files/` 自動コピーは無い
+
+v2 では `files/home/`・`files/workspace/` が自動でコピーされたが、v3 では `files/` はただのビルドコンテキスト。ホーム配下は `.dockerfile` で `COPY` する。ワークスペースに置くファイルは `lifecycle@1` の `files` に `path: "${{ kit.env.WORKSPACE_DIR }}/..."` で書く（参考: `sample-ruff-lint`）。
+
+### 5. install hook は「焼き込めないか」を先に考える
+
+v3 の mixin はイメージ（overlay）を持てる。ダウンロードして置くだけのバイナリは `.dockerfile` に移すと、サンドボックス作成時のネットワーク許可も要らなくなる。hook に残すべきなのは、`apt-get`（mixin は apt パッケージを overlay で運べない）、`claude plugin install` のようにベースのファイルへマージするもの、作成時の値や Docker デーモンが必要なもの。
+
+### 6. v3 サンドボックスでは全 kit が v3
+
+組み込みの `claude` エージェント名は v2 kit 用。v3 kit は `docker.io/docker/sbx-kit-claude` などの v3 workload と組み合わせる。docker/sbx-kits-contrib の kit は `#ref=v3&dir=<kit>` で v3 ブランチを参照する。
 
 ## 落とし穴: network policy
 
-sandbox はデフォルトで送信通信を deny するため、kit が動かすツールが通信する先はすべて `permissions.network.allow` に明記する必要があります。公式ドキュメントには載っていないが、実際の kit 作成で頻繁にハマるポイントを以下にまとめます。
+sandbox はデフォルトで送信通信を deny するため、kit が動かすツールが通信する先はすべて `com.docker.sandbox/network-policy@1` に明記する必要があります。v3 ではフェーズごとに分けて書きます。
 
-### 1. 「インストール時」と「実行時」の両方のホストを洗い出す
+```yaml
+- type: com.docker.sandbox/network-policy@1
+  config:
+    install:          # install hook 実行中だけ開く
+      allow: [registry.npmjs.org]
+    runtime:          # エージェント実行中と startup hook
+      allow: [api.example.com, "*.example.com"]
+      deny: [telemetry.example.com]
+```
 
-kit がツールをインストールしてから実際に使うまでに、通信先が変わることが多いです。両方を allowlist に入れる必要があります。
+### 1. 「インストール時」と「実行時」の両方のホストを洗い出し、フェーズに振り分ける
 
-- **実行時の通信先**: ツール本体が使う API（例: `datadoghq.com`, `*.datadoghq.com`）
-- **インストール時の通信先**: パッケージレジストリやリリース配布元（例: `registry.npmjs.org`, `pypi.org`）
+- **install**: install hook が触るホスト（パッケージレジストリ、リリース配布元、`claude plugin marketplace add` の GitHub）
+- **runtime**: ツール本体が使う API（例: `*.datadoghq.com`）、**startup hook が触るホスト**（startup は runtime フェーズで動く）、実行中のプラグイン更新や `npx`/`uvx` での取得
+- 両方で使うホストは両方に書く。書かなかったフェーズでは何も許可されない。
+- `*.example.com` はサブドメイン1階層だけにマッチし、`example.com` 自体にはマッチしない。
 
 ### 2. GitHub からのインストールは `github.com` だけでは足りない
 
-`gh`/`curl` 経由で GitHub Releases のバイナリを取得する場合、リダイレクト先は `github.com` とは別ドメインです。以下も allow しておく必要があります。
+`gh`/`curl` 経由で GitHub Releases のバイナリを取得する場合、リダイレクト先は `github.com` とは別ドメインです。
 
 - `api.github.com`（Releases API 呼び出し）
 - `github.com`（リポジトリ自体へのアクセス）
-- `objects.githubusercontent.com`（Release アセットの実ダウンロード先）
+- `objects.githubusercontent.com` / `release-assets.githubusercontent.com`（Release アセットの実ダウンロード先）
 
 ### 3. Claude plugin マーケットプレイスも GitHub 経由
 
-`claude plugin marketplace add` / `claude plugin install` は内部で GitHub 上のマーケットプレイスリポジトリを取得するため、上記 GitHub 系ドメインの allow が必要です。
+`claude plugin marketplace add` / `claude plugin install` は内部で GitHub 上のマーケットプレイスリポジトリを取得するため、install フェーズに GitHub 系ドメインが必要です。実行中のプラグイン更新のために runtime にも入れておく。
 
-### 4. 動作確認の方法
+### 4. `apt-get` には apt ミラーの許可が要る
 
-network policy はサンドボックス内のプロキシが強制するものなので、`setup.install` に書いたコマンドをサンドボックスの外（手元のシェルなど）でそのまま実行しても検証にはなりません。かならず kit を実際にサンドボックスへ適用して確認してください。
+`apt-get update` は設定済みの全ソースを更新するので、Ubuntu の `archive.ubuntu.com` / `security.ubuntu.com`（amd64）、`ports.ubuntu.com`（arm64）、`download.docker.com`（*-docker テンプレートが追加済み）を install フェーズに入れる（参考: `chrome-devtools-host`）。
 
-```bash
-sbx run <agent> --kit /path/to/kit/   # 新規サンドボックスを作成して kit を適用
-sbx kit add <sandbox名> /path/to/kit/ # 既存サンドボックスに kit を追加
-```
+### 5. 動作確認の方法
 
-allowlist が不足しているドメインへの通信は、サンドボックス内で `setup.install` 実行中に HTTP 403 で拒否されます。エラーメッセージに出てくるホスト名を `permissions.network.allow` に追記し、`sbx kit add` などで再適用して再検証してください。
+network policy はサンドボックス内のプロキシが強制するものなので、hook のコマンドをサンドボックスの外でそのまま実行しても検証にはなりません。かならず kit を実際にサンドボックスへ適用して確認してください。許可が足りないドメインへの通信は HTTP 403 で拒否されます。ホスト側で `sbx policy log` を見るか、サンドボックス内の `/var/log/sbx-kit-startup.log` を確認し、出てきたホスト名を該当フェーズに追記してサンドボックスを作り直してください。
 
-参考実装: `datadog-claude/spec.yaml`、`claude-documentation/spec.yaml`、`nakahararuu-claude-plugins/spec.yaml` の `permissions.network.allow` を参照。
-
-### 5. フィールド名は upstream の破壊的変更で変わることがある
-
-`docker/sbx-kits-contrib` は `schemaVersion: "2"` のままフィールド名を破壊的に変更することがある（2026-07 に `caps`→`permissions`、`commands`→`setup`、トップレベル `agentContext`→`agentInstructions.content` へリネームされた実績あり、"no legacy shims" 方針のため旧名は警告なくエラーになる）。「最近まで動いていたのに `field X not found in type spec.specFileV2` で急に壊れた」という報告を見たら、まず自分たちの `spec.yaml` の記述ミスを疑う前に upstream の SPEC-v2.md とこのリポジトリの実装がズレていないか確認すること。
+参考実装: `datadog-claude/datadog-claude.yaml`、`claude-documentation/claude-documentation.yaml`、`langfuse-claude/langfuse-claude.yaml`。
 
 ## 落とし穴: credentials（トークン注入）
 
-APIキーやトークンをコンテナ内に注入する kit を作るときの設計:
+APIキーやトークンをコンテナ内に注入する kit は `com.docker.sandbox/credential@1` を (service, phase) ごとに1つ書きます。
 
 ### 1. kit は「何が必要か」だけを宣言する。「どこにあるか」は書かない
 
-`credentials` ブロックは以下のように、サービス名・注入先ドメイン・スキームだけを宣言します。実トークンをどのホスト環境変数・ファイルから読むかは kit に書けません。解決の仕組み（bindings / `sbx secret set`）は https://github.com/docker/sbx-kits-contrib/blob/main/skills/kit-author/topics/bindings.md を参照してください。
-
 ```yaml
-credentials:
-  - service: github
+- type: com.docker.sandbox/credential@1
+  optional: true          # v3 は既定で必須。v2 と同じく任意にするなら明示する
+  config:
+    service: github
+    phase: runtime        # [install, runtime] も可
     apiKey:
       name: GITHUB_TOKEN
       proxyManaged: true
       inject:
         - domain: npm.pkg.github.com
-          scheme: bearer
+          header: Authorization
+          format: "Bearer %s"
 ```
 
-「ホストの環境変数 `FOO_TOKEN` から取る」という要件は、kit の `spec.yaml` にはロジックが書けないので、README で `sbx secret set -g <service> -t "$FOO_TOKEN"` を案内する形に落とし込む。
+実トークンをどのホスト環境変数・ファイルから読むかは kit に書けません。「ホストの環境変数 `FOO_TOKEN` から取る」という要件は README で `sbx secret set -g <service> -t "$FOO_TOKEN"` を案内する形に落とし込む（`sbxenv.yaml` の `secrets` / `bindings` で解決することもできる）。
 
-### 2. コンテナ内のトークン環境変数は実値ではない
+### 2. `inject[].domain` は同じフェーズの allow に完全一致で入れる
 
-`apiKey.proxyManaged: true` を設定すると、コンテナ内の該当環境変数（例 `GITHUB_TOKEN`）には常にリテラル文字列 `proxy-managed` が入ります。実トークンはサンドボックス外のプロキシが、宣言した `inject[].domain` 宛のリクエストを流す瞬間に差し替えるため、コンテナのファイルシステムやプロセス一覧には一切現れません。トークンを埋め込む設定ファイル（`.npmrc` など）は、`${GITHUB_TOKEN}` のようなプレースホルダを書いておいて、ツール自身（npm 等）に実行時展開させる前提で作る。
+`*.example.com` を allow していても `api.example.com` への inject は検証で落ちる。ワイルドカードの横に完全一致のホストを書き足す。
 
-### 3. `setup.files` の `content` は `${WORKDIR}` 以外のプレースホルダを受け付けない
+### 3. コンテナ内のトークン環境変数は実値ではない
 
-`${GITHUB_TOKEN}` のようなトークン用プレースホルダを埋め込んだファイルを `setup.files` で書こうとすると、`sbx kit validate` で `unsupported placeholder` エラーになります。トークンを含むファイルは `setup.install` のシェルコマンド（`cat`/`echo`/`jq` など）で書き出すこと。
+`apiKey.proxyManaged: true` を設定すると、コンテナ内の該当環境変数には常にリテラル文字列 `proxy-managed` が入ります。実トークンはサンドボックス外のプロキシが、宣言した `inject[].domain` 宛のリクエストを流す瞬間に差し替える。トークンを埋め込む設定ファイル（`.npmrc` など）は `${GITHUB_TOKEN}` のようなプレースホルダを書いておき、ツール自身に実行時展開させる。
 
-参考実装: `github-registries/spec.yaml`。
+### 4. `lifecycle@1` の `files` で展開されるのは `${{ kit.* }}` だけ
+
+`${GITHUB_TOKEN}` のようなシェル変数は展開されずにそのまま書かれる（ツール側で展開させたいならそれで良い）。hook の中で値を使う場合は `env:` に列挙する。
