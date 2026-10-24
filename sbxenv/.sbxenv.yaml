@@ -1,0 +1,36 @@
+# sbx env user defaults: the "小・中規模の機能開発" (small/medium feature
+# development) sandbox from this repo's wiki, so that a bare
+# `sbx env create` / `sbx env run` in any project directory builds it.
+# Install as ~/.sbxenv.yaml (see README.md next to this file).
+# Spec: https://docs.docker.com/ai/sandboxes/configuration/environment-files/
+schemaVersion: "1"
+
+# v3 kits only compose onto a v3 workload; the built-in `claude` agent name
+# selects v2 kits. `agent` is the last path component of the workload image.
+agent: sbx-kit-claude
+
+# User defaults may only point the workspace at the project directory (or a
+# subdirectory). `clone: true` matches the wiki's `sbx create --clone`.
+workspace:
+  path: ${{ env.projectDir }}
+  clone: true
+
+kits:
+  # The Claude Code workload. Bump the tag to update Claude Code.
+  - docker.io/docker/sbx-kit-claude:2.1.267
+
+  # docker/sbx-kits-contrib: its default branch still holds v2 kits, so pin
+  # the v3 branch.
+  - "git+https://github.com/docker/sbx-kits-contrib.git#ref=v3&dir=claude-sbx-statusline"
+  - "git+https://github.com/docker/sbx-kits-contrib.git#ref=v3&dir=git-ssh-sign"
+  - "git+https://github.com/docker/sbx-kits-contrib.git#ref=v3&dir=mise"
+  - "git+https://github.com/docker/sbx-kits-contrib.git#ref=v3&dir=neovim"
+
+  # nakahararuu/sbx-kits (this repo, kit-spec v3 on main)
+  - "git+https://github.com/nakahararuu/sbx-kits.git#dir=chrome-devtools-host"
+  - "git+https://github.com/nakahararuu/sbx-kits.git#dir=claude-documentation"
+  - "git+https://github.com/nakahararuu/sbx-kits.git#dir=claude-plugins-small-medium"
+  - "git+https://github.com/nakahararuu/sbx-kits.git#dir=docker-amd64"
+  - "git+https://github.com/nakahararuu/sbx-kits.git#dir=langfuse-claude"
+  - "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-runtimes"
+  - "git+https://github.com/nakahararuu/sbx-kits.git#dir=nakahararuu-claude-plugins"

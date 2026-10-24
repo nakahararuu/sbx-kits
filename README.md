@@ -34,6 +34,10 @@ v3 kit は v3 workload とだけ組み合わせられます（組み込みの `c
 sbx settings set kit.allowedSources '["docker.io/","github.com/docker/","github.com/nakahararuu/"]'
 ```
 
+### `sbx env` で「小・中規模の機能開発」サンドボックスを作る
+
+[`sbxenv/.sbxenv.yaml`](./sbxenv/.sbxenv.yaml) を `~/.sbxenv.yaml` として配置すると、任意のプロジェクトで引数なしの `sbx env create` / `sbx env run` だけで wiki の「小・中規模の機能開発」構成のサンドボックスが作れます。詳しくは [`sbxenv/README.md`](./sbxenv/README.md) を参照してください。
+
 ### 新規サンドボックスを kit 付きで起動する
 
 ```bash
