@@ -23,7 +23,7 @@ plugin 名をハードコードせず動的に列挙してインストールし�
 ## 使い方
 
 ```bash
-sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=nakahararuu-claude-plugins" .
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit ghcr.io/nakahararuu/sbx-kits/nakahararuu-claude-plugins:latest .
 ```
 
 see: https://docs.docker.com/ai/sandboxes/customize/

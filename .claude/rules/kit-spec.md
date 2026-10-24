@@ -79,7 +79,7 @@ capabilities:
 docker buildx build <kit> -f <kit>/<kit>.yaml --output type=cacheonly
 ```
 
-kit ディレクトリ内のファイルを Edit/Write すると PostToolUse hook が自動でこれを実行し、失敗時は agent にフィードバックされる。CI（`.github/workflows/validate-kits.yml`）も同じコマンドで全 kit を検証している。
+kit ディレクトリ内のファイルを Edit/Write すると PostToolUse hook が自動でこれを実行し、失敗時は agent にフィードバックされる。CI（`.github/workflows/build-and-publish-kits.yml`）も pull request では同じビルドを全 kit に対して実行し（`DRY_RUN=1 scripts/publish-kit.sh <kit>`）、main への push で `ghcr.io/nakahararuu/sbx-kits/<kit>` に publish する。
 
 ビルドで分かるのは記述子の書式（strict decode）と recipe が動くことだけ。ネットワーク許可・hook の挙動・overlay の所有者は検証されない。動作確認はホストで v3 workload と一緒に新規サンドボックスを作って行う（`sbx kit add` は既存の v3 サンドボックスに mixin を追加できないので作り直す）:
 
@@ -87,13 +87,17 @@ kit ディレクトリ内のファイルを Edit/Write すると PostToolUse hoo
 sbx run docker.io/docker/sbx-kit-claude:<tag> --kit ./<kit> .
 # push 済みなら
 sbx run docker.io/docker/sbx-kit-claude:<tag> --kit "git+https://github.com/nakahararuu/sbx-kits.git#ref=<branch>&dir=<kit>" .
+# main にマージ済みなら（CI が publish したイメージ）
+sbx run docker.io/docker/sbx-kit-claude:<tag> --kit ghcr.io/nakahararuu/sbx-kits/<kit>:latest .
 ```
+
+ローカルパスと Git 参照では `sbx` がホストで kit をビルドするので、OCI exporter に対応した BuildKit が要る（Docker Desktop 既定の docker driver は `OCI exporter is not supported for the docker driver` で失敗する）。利用者向けの参照（README、`dot_sbxenv.yaml`）は公開イメージにする。
 
 ## 仕上げ
 
 - kit の `README.md` を書く/更新する（何を入れるか、フェーズ付きの通信先の表、使い方）
 - ルートの `README.md` の kit 一覧に行を追加する
-- 「小・中規模の機能開発」構成に入れる kit なら、nakahararuu/dotfiles の `dot_sbxenv.yaml`（`~/.sbxenv.yaml`）にも追加する
+- 「小・中規模の機能開発」構成に入れる kit なら、nakahararuu/dotfiles の `dot_sbxenv.yaml`（`~/.sbxenv.yaml`）にも `ghcr.io/nakahararuu/sbx-kits/<kit>:latest` で追加する（新しい kit は初回 publish 後に GitHub の package 設定で public にする）
 
 ## 落とし穴: v3 の書き方
 
