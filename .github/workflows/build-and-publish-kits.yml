@@ -7,16 +7,9 @@ name: Build and publish kits
 #   ghcr.io/nakahararuu/sbx-kits/<kit>:latest         rolling
 #   ghcr.io/nakahararuu/sbx-kits/<kit>:sha-<12 hex>   immutable, per commit
 #
-# Why publish at all: a `git+https://...` kit reference makes `sbx` build the
-# kit on the host, and building a v3 kit needs a BuildKit that can export OCI
-# images. Docker Desktop's default docker driver can't ("OCI exporter is not
-# supported for the docker driver"), so `sbx env create` fails on a stock Mac.
-# Hosts pull the published image instead, as with docker/sbx-kits-contrib
-# (docker.io/sbx/<kit>).
-#
-# Pull requests run the same build with
-# `--output type=cacheonly`: the frontend validates the descriptor during the
-# build, so a kit that would fail to publish fails here first.
+# Pull requests run the same build with `--output type=cacheonly`: the
+# frontend validates the descriptor during the build, so a kit that would fail
+# to publish fails here first.
 #
 # The build itself lives in scripts/publish-kit.sh so it can be run locally:
 #   DRY_RUN=1 scripts/publish-kit.sh <kit>

@@ -24,8 +24,7 @@
 # needs a BuildKit that can export OCI images (the docker-container driver, as
 # set up by docker/setup-buildx-action, or the containerd image store); the
 # plain docker driver fails with "OCI exporter is not supported for the docker
-# driver", which is exactly why kits are published from CI rather than built
-# from source on each host.
+# driver".
 #
 # Emits `ref=`, `version=`, `tags=` and `pushed=` on stdout so CI can redirect
 # into $GITHUB_OUTPUT; everything else goes to stderr. When GITHUB_STEP_SUMMARY
