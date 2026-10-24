@@ -3,7 +3,7 @@
 # through chrome-devtools-mcp. Usage and design notes: see README.md.
 schemaVersion: "3"
 kind: mixin
-version: "1.0.0"
+version: "1.0.1"
 displayName: Chrome DevTools (Host Browser)
 description: Lets Claude Code control the Chrome browser running on the host machine via the official chrome-devtools-mcp plugin, bridging the sandbox to the host's remote-debugging port
 sourceUrl: https://github.com/nakahararuu/sbx-kits/tree/main/chrome-devtools-host
@@ -45,9 +45,12 @@ capabilities:
           user: "0"
           env: [HTTP_PROXY, HTTPS_PROXY, NO_PROXY]
           description: Install socat (host bridge) and jq (patching the plugin's MCP config)
+        # Without --sparse, marketplace add also clones the repo's submodules (~2.7GB,
+        # incl. llvm-project), exceeds Claude Code's 120s git timeout and fails.
+        # See README.md.
         - command: |
             set -e
-            claude plugin marketplace add ChromeDevTools/chrome-devtools-mcp
+            claude plugin marketplace add ChromeDevTools/chrome-devtools-mcp --sparse .claude-plugin skills
             claude plugin install chrome-devtools-mcp@chrome-devtools-plugins
           user: "1000"
           env: [HTTP_PROXY, HTTPS_PROXY, NO_PROXY]
