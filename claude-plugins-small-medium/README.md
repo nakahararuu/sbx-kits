@@ -17,14 +17,15 @@
 
 以下のドメインへのアクセスを許可します。
 
-| 用途 | ドメイン |
-|------|----------|
-| マーケットプレイス取得・plugin install（git clone / API / release asset） | `github.com`, `api.github.com`, `objects.githubusercontent.com` |
-| serena の Python 依存関係解決（uv 経由） | `pypi.org`, `files.pythonhosted.org` |
-| context7 MCP server の npx install | `registry.npmjs.org` |
-| context7 MCP server の実行時 API | `context7.com`, `mcp.context7.com` |
+| フェーズ | 用途 | ドメイン |
+|------|------|----------|
+| install | マーケットプレイス取得・plugin install（git clone / API / release asset） | `github.com`, `api.github.com`, `objects.githubusercontent.com` |
+| runtime | plugin の更新、serena の取得（`uv tool run --from git+https://github.com/...`） | `github.com`, `api.github.com`, `objects.githubusercontent.com` |
+| runtime | serena の Python 依存関係解決（uv 経由） | `pypi.org`, `files.pythonhosted.org` |
+| runtime | context7 MCP server の npx install | `registry.npmjs.org` |
+| runtime | context7 MCP server の実行時 API | `context7.com`, `mcp.context7.com` |
 
-**注意:** serena は言語ごとの language server を初回利用時にオンデマンドでダウンロードすることがある。特定言語の解析でネットワークブロックが発生した場合は、エラーメッセージに出てくるドメインを `network.allowedDomains` に追記して再適用すること（`.claude/rules/kit-spec.md` 参照）。
+**注意:** serena は言語ごとの language server を初回利用時にオンデマンドでダウンロードすることがある。特定言語の解析でネットワークブロックが発生した場合は、エラーメッセージに出てくるドメインを `network-policy@1` の `runtime.allow` に追記し、サンドボックスを作り直すこと（`.claude/rules/kit-spec.md` 参照）。
 
 ## 使い方
 

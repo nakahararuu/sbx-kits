@@ -27,8 +27,9 @@ jobs:
 
       # A kit is a directory holding a v3 descriptor named after it
       # (<kit>/<kit>.yaml) whose first line is the kit frontend's syntax
-      # directive. A leftover v2 spec.yaml is reported as a failure instead of
-      # being silently skipped (otherwise CI would pass by building nothing).
+      # directive. A leftover v2 spec.yaml, or a <kit>/<kit>.yaml without that
+      # directive, is reported as a failure instead of being silently skipped
+      # (otherwise CI would pass without validating that kit).
       - name: List kit directories
         id: list
         run: |
@@ -37,13 +38,22 @@ jobs:
             echo "::error::v2 spec.yaml found (migrate to <kit>/<kit>.yaml, kit-spec v3): $stale"
             exit 1
           fi
-          kits=$(for f in */*.yaml; do
-              kit=${f%%/*}
-              [[ "$f" == "$kit/$kit.yaml" ]] || continue
-              head -1 "$f" | grep -q '^# syntax=docker/sandbox-kit:3' && echo "$kit"
-            done \
-            | sort \
-            | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          kits=()
+          missing_syntax=()
+          for f in */*.yaml; do
+            kit=${f%%/*}
+            [[ "$f" == "$kit/$kit.yaml" ]] || continue
+            if head -1 "$f" | grep -q '^# syntax=docker/sandbox-kit:3'; then
+              kits+=("$kit")
+            else
+              missing_syntax+=("$f")
+            fi
+          done
+          if (( ${#missing_syntax[@]} > 0 )); then
+            echo "::error::kit descriptor without '# syntax=docker/sandbox-kit:3' on its first line: ${missing_syntax[*]}"
+            exit 1
+          fi
+          kits=$(printf '%s\n' "${kits[@]}" | sort | jq -R -s -c 'split("\n") | map(select(length > 0))')
           echo "kits=$kits" >> "$GITHUB_OUTPUT"
           echo "Discovered kits: $kits"
 

@@ -36,11 +36,13 @@ Chrome の DevTools WebSocket サーバーは `Host` ヘッダーが `localhost:
 
 ## ネットワーク
 
-| 用途 | ドメイン |
-|------|----------|
-| ホストの Chrome DevTools ポートへの接続（socat 経由） | `localhost:9222` |
-| chrome-devtools-mcp の npx 解決(MCP サーバー起動時) | `registry.npmjs.org` |
-| 公式マーケットプレイス・plugin ソースの取得（git clone） | `github.com`, `api.github.com` |
+| フェーズ | 用途 | ドメイン |
+|------|------|----------|
+| install | socat / jq の apt-get install（Ubuntu ミラーと、*-docker テンプレートが追加済みの Docker の apt リポジトリ） | `archive.ubuntu.com`, `security.ubuntu.com`, `ports.ubuntu.com`, `download.docker.com` |
+| install | 公式マーケットプレイス・plugin ソースの取得（git clone） | `github.com`, `api.github.com` |
+| runtime | ホストの Chrome DevTools ポートへの接続（socat 経由） | `localhost:9222` |
+| runtime | chrome-devtools-mcp の npx 解決（MCP サーバー起動時） | `registry.npmjs.org` |
+| runtime | plugin の更新（マーケットプレイスの git fetch） | `github.com`, `api.github.com` |
 
 ## 使い方
 

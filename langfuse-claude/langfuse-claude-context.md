@@ -52,8 +52,10 @@ Usage:
 - Only `claude` CLI sessions and desktop **Code mode** are traced — regular Claude
   Desktop **Chat mode** does not invoke Claude Code hooks and is never captured.
 - Langfuse's web UI listens on container port 3000. This kit does not declare a
-  `port@1` capability to auto-publish it (a fixed host port would collide across
-  sandboxes), so ask the user to run
+  `port@1` capability to auto-publish it: `port@1` binds the host side to an
+  ephemeral port chosen by the runtime, but Langfuse is configured with
+  `NEXTAUTH_URL=http://localhost:3000`, so login redirects would point at the wrong
+  port. Instead, ask the user to run
   `sbx ports <sandbox> --publish 3000:3000` on the host to view the dashboard in a
   browser (see "Publishing ports to the host" in the project's environment notes).
 - Login with the email/password in `LANGFUSE_INIT_USER_EMAIL` /

@@ -24,7 +24,7 @@ kit の仕様については [kit-spec v3](https://github.com/docker/sandbox-kit
 
 ## 使い方
 
-v3 kit は v3 workload とだけ組み合わせられます（組み込みの `claude` エージェント名は v2 kit 用なので、v3 kit とは併用できません）。Claude Code を使う場合は `docker.io/docker/sbx-kit-claude` workload を指定します。`sbx` v0.45 以降が必要です。
+v3 kit は v3 workload とだけ組み合わせられます（組み込みの `claude` エージェント名は v2 kit 用なので、v3 kit とは併用できません）。Claude Code を使う場合は `docker.io/docker/sbx-kit-claude` workload を指定します。`sbx` v0.48 以降が必要です（v3 kit 自体は v0.45 から使えますが、`sample-ruff-lint` が使う `kit.env` 参照は v0.48.0 からの対応です）。
 
 ### 事前準備: Git kit の取得元を許可する
 
