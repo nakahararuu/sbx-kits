@@ -6,8 +6,8 @@
 
 ```bash
 sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
-  --kit "git+https://github.com/docker/sbx-kits-contrib.git#ref=v3&dir=mise" \
-  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-runtimes" .
+  --kit docker.io/sbx/mise:latest \
+  --kit ghcr.io/nakahararuu/sbx-kits/mise-runtimes:latest .
 ```
 
 ## ネットワーク
@@ -39,8 +39,8 @@ mise のコア plugin 実装(`jdx/mise` の `src/plugins/core/{node,go,python,ja
 
 ```bash
 sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
-  --kit "git+https://github.com/docker/sbx-kits-contrib.git#ref=v3&dir=mise" \
-  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-runtimes" .
+  --kit docker.io/sbx/mise:latest \
+  --kit ghcr.io/nakahararuu/sbx-kits/mise-runtimes:latest .
 ```
 
 kit 適用後:

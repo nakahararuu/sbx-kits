@@ -47,7 +47,7 @@ Chrome の DevTools WebSocket サーバーは `Host` ヘッダーが `localhost:
 ## 使い方
 
 ```bash
-sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=chrome-devtools-host" .
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit ghcr.io/nakahararuu/sbx-kits/chrome-devtools-host:latest .
 ```
 
 導入後、Claude から見ると `claude mcp list` に `plugin:chrome-devtools-mcp:chrome-devtools` という名前で（`--browser-url=http://localhost:9222` 付きで）Chrome DevTools ツールが使える。

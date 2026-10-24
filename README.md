@@ -25,36 +25,58 @@ kit の仕様については [kit-spec v3](https://github.com/docker/sandbox-kit
 
 v3 kit は v3 workload とだけ組み合わせられます（組み込みの `claude` エージェント名は v2 kit 用なので、v3 kit とは併用できません）。Claude Code を使う場合は `docker.io/docker/sbx-kit-claude` workload を指定します。`sbx` v0.48 以降が必要です（v3 kit 自体は v0.45 から使えますが、`sample-ruff-lint` が使う `kit.env` 参照は v0.48.0 からの対応です）。
 
-### 事前準備: Git kit の取得元を許可する
 
-リモート kit の取得元はデフォルトで Docker Hub のみ許可されています。このリポジトリと docker/sbx-kits-contrib の kit を使うには、ホストで一度だけ次を実行します（設定値は allowlist 全体を置き換えます）。
+### 公開イメージ
+
+各 kit は CI（`.github/workflows/build-and-publish-kits.yml`）が main への push ごとにビルドし、OCI イメージとして GitHub Container Registry に publish しています（`linux/amd64` と `linux/arm64`）。
+
+| タグ | 意味 |
+| --- | --- |
+| `ghcr.io/nakahararuu/sbx-kits/<kit>:latest` | main の最新。通常はこれを使う |
+| `ghcr.io/nakahararuu/sbx-kits/<kit>:<version>` | 記述子の `version:`。publish のたびに付け替わる |
+| `ghcr.io/nakahararuu/sbx-kits/<kit>:sha-<12桁>` | その commit からのビルド。付け替わらないので固定したいときに使う |
+
+`git+https://github.com/nakahararuu/sbx-kits.git#dir=<kit>` のような Git 参照も書けますが、その場合 `sbx` がホストで kit をビルドします。v3 kit のビルドには OCI exporter に対応した BuildKit が必要で、Docker Desktop 既定の docker driver では `OCI exporter is not supported for the docker driver` で失敗します。普段は公開イメージを使ってください。
+
+### 事前準備: kit の取得元を許可する
+
+リモート kit の取得元はデフォルトで Docker Hub のみ許可されています。このリポジトリの kit（ghcr.io）を使うには、ホストで一度だけ次を実行します（設定値は allowlist 全体を置き換えます）。docker/sbx-kits-contrib の kit は `docker.io/sbx/<kit>` で公開されているので `docker.io/` で足ります。
 
 ```bash
-sbx settings set kit.allowedSources '["docker.io/","github.com/docker/","github.com/nakahararuu/"]'
+sbx settings set kit.allowedSources '["docker.io/","ghcr.io/nakahararuu/"]'
 ```
 
 ### 新規サンドボックスを kit 付きで起動する
 
 ```bash
 sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
-  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=<kit-name>" .
+  --kit ghcr.io/nakahararuu/sbx-kits/<kit-name>:latest .
 ```
 
-複数の kit を同時に指定することもできます。docker/sbx-kits-contrib の kit は main ブランチが v2 のままなので、`ref=v3` を付けて v3 版を参照してください。
+複数の kit を同時に指定することもできます。docker/sbx-kits-contrib の v3 kit は `docker.io/sbx/<kit>` を使います。
 
 ```bash
 sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
-  --kit "git+https://github.com/docker/sbx-kits-contrib.git#ref=v3&dir=mise" \
-  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-runtimes" \
-  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=chrome-devtools-host" .
+  --kit docker.io/sbx/mise:latest \
+  --kit ghcr.io/nakahararuu/sbx-kits/mise-runtimes:latest \
+  --kit ghcr.io/nakahararuu/sbx-kits/chrome-devtools-host:latest .
 ```
 
 `sbx kit add` は既存の v3 サンドボックスに mixin を追加できないため、kit を足したいときはサンドボックスを作り直してください。
 
 ### kit を編集した場合は検証する
 
-`sbx kit validate` は v3 のソース kit を扱えないので、kit frontend でビルドして検証します（CI も同じコマンドで全 kit を検証しています）。
+`sbx kit validate` は v3 のソース kit を扱えないので、kit frontend でビルドして検証します。CI も pull request では同じビルドを（push せずに）全 kit に対して実行しています。
 
 ```bash
 docker buildx build <kit-name> -f <kit-name>/<kit-name>.yaml --output type=cacheonly
+# CI と同じスクリプト（複数プラットフォームでビルドし、push はしない）
+DRY_RUN=1 scripts/publish-kit.sh <kit-name>
+```
+
+マージ前のブランチの kit をサンドボックスで試すときは、OCI exporter に対応した BuildKit があるホストで Git 参照を使います（`kit.allowedSources` に `"github.com/nakahararuu/"` も追加してください）。
+
+```bash
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
+  --kit "git+https://github.com/nakahararuu/sbx-kits.git#ref=<branch>&dir=<kit-name>" .
 ```

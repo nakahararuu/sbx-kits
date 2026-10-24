@@ -16,7 +16,7 @@ arm64 サンドボックス上で `--platform linux/amd64` の Docker コンテ�
 ## 使い方
 
 ```bash
-sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=docker-amd64" .
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit ghcr.io/nakahararuu/sbx-kits/docker-amd64:latest .
 ```
 
 kit 適用後:
