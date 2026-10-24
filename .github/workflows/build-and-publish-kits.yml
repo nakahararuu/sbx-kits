@@ -66,7 +66,7 @@ jobs:
         run: |
           set -euo pipefail
           kits=$(scripts/discover-kits.sh | jq -R . | jq -sc .)
-          echo "kits=$kits"
+          echo "kits=$kits" >> "$GITHUB_OUTPUT"
           echo "Discovered kits: $kits"
 
   kit:
