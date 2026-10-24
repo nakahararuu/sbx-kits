@@ -8,7 +8,7 @@ kit の仕様については [kit-spec v3](https://github.com/docker/sandbox-kit
 
 | kit | 概要 |
 | --- | --- |
-| [`sbx-kit-dev`](./sbx-kit-dev) | このモノレポで kit を開発するためのツールをインストールするkit |
+| [`sbx-kit-dev`](./sbx-kit-dev) | このモノレポの kit（v3）をサンドボックス内で `docker buildx` を使って検証できるようにする（Docker Hub への通信許可と検証手順の agent-context） |
 | [`chrome-devtools-host`](./chrome-devtools-host) | ホストマシン上で動く Chrome を `chrome-devtools-mcp` 経由で操作できるようにする |
 | [`claude-documentation`](./claude-documentation) | ClaudeがMiro、Cosenseを用いたドキュメンテーションを支援できるようにする |
 | [`claude-plugins-small-medium`](./claude-plugins-small-medium) | 公式マーケットプレイスから小〜中規模開発向け plugin（context7, feature-dev, code-review, pr-review-toolkit, commit-commands, security-guidance, serena）一式をインストールする |

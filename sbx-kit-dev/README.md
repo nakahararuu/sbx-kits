@@ -1,28 +1,32 @@
 # sbx-kit-dev
 
-このリポジトリで kit を開発する際に `sbx` CLI を使えるようにする mixin kit。
+このリポジトリの kit（kit-spec v3）をサンドボックスの中で開発・検証できるようにする mixin kit。
 
-## インストール内容
+## 何をするか
 
-- **sbx CLI** — `docker/sbx-releases` の最新リリースから、実行アーキテクチャ（x86_64/arm64）に対応する `DockerSandboxes-linux-*.tar.gz` をダウンロードし、中身の `docker-sbx/sbx` バイナリだけを `/usr/local/bin/sbx` に配置する
-
-`sbx` は静的バイナリで、daemon や VM (KVM等) を必要としないサブコマンドは通常のサンドボックス環境内でもそのまま動く（`sbx run` 等サンドボックス自体を作成するコマンドはこの kit の対象外）。
-
-## agent-context
-
-このリポジトリの kit は kit-spec v3（`<kit>/<kit>.yaml`、先頭行 `# syntax=docker/sandbox-kit:3`）で書かれている。`sbx kit validate` は v3 のソース kit を扱えないため、kit を編集したら次のように kit frontend でビルドして検証するよう agent に指示を注入する。
+v3 のソース kit は `sbx kit validate` では検証できず、kit frontend でビルドして検証します。
 
 ```bash
 docker buildx build <kit-dir> -f <kit-dir>/<kit>.yaml --output type=cacheonly
 ```
 
-v3 は strict decoding なので、v2 の名残（`name:` や `permissions:` など）や置き場所を間違えたフィールドはここで行番号付きのエラーになる。
+このコマンドには、サンドボックス内の Docker Engine と buildx プラグイン、および Docker Hub（kit frontend のイメージ `docker/sandbox-kit:3` の取得元）への通信が必要です。この kit はそれを次のように揃えます。
+
+- **Docker Engine / buildx** — 自分ではインストールせず、workload が提供していることを `requires: ["deb/docker-ce", "deb/docker-buildx-plugin"]` で宣言する。`docker.io/docker/sbx-kit-claude` はどちらも提供しているので、そのまま組み合わせられる（提供していない workload と組み合わせるとサンドボックス作成時にエラーになる）
+- **Docker Hub への通信** — workload のネットワークポリシーには含まれていないので、runtime フェーズで許可する
+- **agent-context** — kit を編集したら上記のコマンドで検証すること、ビルドが通っても通信許可や hook の動作は実際のサンドボックスでしか確認できないことを agent に伝える
+
+v2 の頃は `sbx kit validate` のために sbx CLI をインストールしていたが、v3 では検証に使えないためインストールをやめた。
+
+なお、このリポジトリ自体には `.claude/settings.json` に `PostToolUse` hook（`.claude/hooks/validate-kit-spec.sh`）を設定してあり、kit の編集後に自動で検証が走る。この kit の agent-context は、hook が効かない環境向けの保険。
 
 ## ネットワーク
 
 | フェーズ | 用途 | ドメイン |
 |------|------|----------|
-| install | 最新リリースAPI・アセットダウンロード | `api.github.com`, `github.com`, `objects.githubusercontent.com`, `release-assets.githubusercontent.com` |
+| runtime | kit frontend・ベースイメージの取得（Docker Hub） | `registry-1.docker.io`, `auth.docker.io`, `production.cloudflare.docker.com` |
+
+kit の `<kit>.dockerfile` が `RUN` で他のホストからダウンロードする場合、そのホストは許可されていないため、ビルドが失敗することがあります。必要に応じてサンドボックス側のポリシーで許可してください。
 
 ## 使い方
 
