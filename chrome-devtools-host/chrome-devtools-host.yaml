@@ -45,11 +45,9 @@ capabilities:
           user: "0"
           env: [HTTP_PROXY, HTTPS_PROXY, NO_PROXY]
           description: Install socat (host bridge) and jq (patching the plugin's MCP config)
-        # --sparse keeps Claude Code from cloning third_party/devtools-frontend and
-        # its chromium.googlesource.com submodules (llvm-project etc., ~2.7GB), which
-        # overruns the 120s plugin git timeout. With sparsePaths set, marketplace
-        # updates skip `git submodule update` too. The plugin itself only needs
-        # .claude-plugin/ and skills/ (cone mode still checks out top-level files).
+        # Without --sparse, marketplace add also clones the repo's submodules (~2.7GB,
+        # incl. llvm-project), exceeds Claude Code's 120s git timeout and fails.
+        # See README.md.
         - command: |
             set -e
             claude plugin marketplace add ChromeDevTools/chrome-devtools-mcp --sparse .claude-plugin skills
