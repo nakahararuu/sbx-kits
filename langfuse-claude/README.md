@@ -15,7 +15,7 @@ Claude Code のセッション（LLM呼び出し・ツール呼び出し・ト�
 
 このkitは `credentials:` ブロックを使いません。Langfuse サーバーと、それに送信する plugin の両方が同じサンドボックス内で完結するため、ホスト側の `sbx secret set` は不要です。
 
-`commands.install` 実行時に以下をすべてローカルで生成し、`/opt/langfuse/.env` に書き込みます。
+`lifecycle@1` の `install` hook 実行時に以下をすべてローカルで生成し、`/opt/langfuse/.env` に書き込みます。
 
 - Postgres / ClickHouse / Redis / MinIO のパスワード
 - Langfuse の `NEXTAUTH_SECRET` / `SALT` / `ENCRYPTION_KEY`
@@ -28,7 +28,7 @@ plugin 側の設定は `claude plugin install ... --config` ではなく、`~/.c
 ## 使い方
 
 ```bash
-sbx run claude --kit /path/to/langfuse-claude/
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=langfuse-claude" .
 ```
 
 普段通り `claude` を使うだけで、ターンごとに自動でトレースが送信されます。
@@ -55,7 +55,7 @@ sbx run claude --kit /path/to/langfuse-claude/
 | Langfuse Python SDK の初回ダウンロード（`uv run --script` 経由） | `pypi.org`, `files.pythonhosted.org` |
 | minio イメージ（`cgr.dev/chainguard/minio`）の pull | `cgr.dev`, `*.r2.cloudflarestorage.com` |
 
-Docker イメージの pull は `commands.startup` 内の `docker compose up -d` で行われます（`commands.install` の時点では Docker ソケットがまだマウントされておらず `docker` コマンドが使えないため）。`docker.io` からの pull（`langfuse/*`, `clickhouse/clickhouse-server`, `redis`, `postgres`）には `caps.network.allow` へのエントリは不要ですが、`cgr.dev`（minio イメージのレジストリ）は別ホストなので上表のとおり明示的に allow しています。`cgr.dev` はマニフェスト解決のみを担当し、実際のイメージレイヤーは `*.r2.cloudflarestorage.com`（Cloudflare R2、Chainguard のブロブストレージ backend）にリダイレクトされるため、そちらも allow が必要です。
+Docker イメージの pull は `lifecycle@1` の `startup` hook 内の `docker compose up -d` で行われます（`lifecycle@1` の `install` hook の時点では Docker ソケットがまだマウントされておらず `docker` コマンドが使えないため）。`docker.io` からの pull（`langfuse/*`, `clickhouse/clickhouse-server`, `redis`, `postgres`）には `network-policy@1` の allow へのエントリは不要ですが、`cgr.dev`（minio イメージのレジストリ）は別ホストなので上表のとおり明示的に allow しています。`cgr.dev` はマニフェスト解決のみを担当し、実際のイメージレイヤーは `*.r2.cloudflarestorage.com`（Cloudflare R2、Chainguard のブロブストレージ backend）にリダイレクトされるため、そちらも allow が必要です。
 
 ## スコープ外
 

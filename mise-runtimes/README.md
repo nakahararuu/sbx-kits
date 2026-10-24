@@ -1,11 +1,13 @@
 # mise-runtimes
 
-[docker/sbx-kits-contrib の `mise` kit](https://github.com/docker/sbx-kits-contrib/tree/main/mise) を拡張する mixin kit。mise で **Java / Go / Python / Node** を install するのに必要な domain を allow する。
+[docker/sbx-kits-contrib の `mise` kit](https://github.com/docker/sbx-kits-contrib/tree/v3/mise) を拡張する mixin kit。mise で **Java / Go / Python / Node** を install するのに必要な domain を allow する。
 
 この kit 単体では mise 自体はインストールしません。必ず本家 `mise` kit と併用してください。
 
 ```bash
-sbx run claude --kit mise --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-runtimes"
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
+  --kit "git+https://github.com/docker/sbx-kits-contrib.git#ref=v3&dir=mise" \
+  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-runtimes" .
 ```
 
 ## ネットワーク
@@ -34,7 +36,9 @@ mise のコア plugin 実装(`jdx/mise` の `src/plugins/core/{node,go,python,ja
 ## 使い方
 
 ```bash
-sbx run claude --kit mise --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-runtimes"
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
+  --kit "git+https://github.com/docker/sbx-kits-contrib.git#ref=v3&dir=mise" \
+  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-runtimes" .
 ```
 
 kit 適用後:

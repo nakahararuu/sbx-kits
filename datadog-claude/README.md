@@ -30,5 +30,5 @@ Claude Code 向け Datadog 調査用 mixin kit。
 ## 使い方
 
 ```bash
-sbx run claude --kit /path/to/datadog-claude/
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=datadog-claude" .
 ```

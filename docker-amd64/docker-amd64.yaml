@@ -1,0 +1,37 @@
+# syntax=docker/sandbox-kit:3
+# Docker Sandboxes kit: run linux/amd64 containers on an arm64 sandbox via
+# QEMU user-mode emulation. Usage and design notes: see README.md.
+schemaVersion: "3"
+kind: mixin
+version: "1.0.0"
+displayName: Docker amd64 Emulation
+description: Enables running --platform linux/amd64 Docker containers on an arm64 sandbox via QEMU user-mode emulation and binfmt_misc
+sourceUrl: https://github.com/nakahararuu/sbx-kits/tree/main/docker-amd64
+
+capabilities:
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      startup:
+        - command:
+            - bash
+            - -c
+            - |
+              set -e
+              case "$(uname -m)" in
+                aarch64|arm64) ;;
+                *) echo "docker-amd64: host is already amd64, nothing to do"; exit 0 ;;
+              esac
+              if ! mountpoint -q /proc/sys/fs/binfmt_misc; then
+                mount binfmt_misc -t binfmt_misc /proc/sys/fs/binfmt_misc
+              fi
+              if [ ! -e /proc/sys/fs/binfmt_misc/qemu-x86_64 ]; then
+                docker run --rm --privileged tonistiigi/binfmt --install amd64
+              fi
+          user: "0"
+          env: [DOCKER_HOST]
+          description: Mount binfmt_misc, then register qemu-x86_64 via tonistiigi/binfmt (both are volatile kernel state — must be redone on every boot)
+
+  # v2's agentInstructions body, staged from the file beside this descriptor.
+  - type: com.docker.sandbox/agent-context@1
+    config:
+      contentFile: ./docker-amd64-context.md

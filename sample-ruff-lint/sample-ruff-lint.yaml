@@ -1,0 +1,35 @@
+# syntax=docker/sandbox-kit:3
+# Sample kit: Ruff with a shared team config. Usage: see README.md.
+schemaVersion: "3"
+kind: mixin
+version: "1.0.0"
+displayName: Ruff Linter
+description: Python linting with shared team config
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      install:
+        allow:
+          - pypi.org
+          - files.pythonhosted.org
+
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      install:
+        - command: "uv tool install ruff@latest"
+          user: "1000"
+          env: [HTTP_PROXY, HTTPS_PROXY, NO_PROXY]
+          description: Install Ruff
+      # MIGRATION NOTE: v2 copied files/workspace/ruff.toml into the workspace
+      # automatically. v3 has no implicit files/ tree, so the team config is
+      # declared inline and written into the workspace at sandbox start. It
+      # does not clobber a ruff.toml the repository already has.
+      files:
+        - path: "${{ kit.env.WORKSPACE_DIR }}/ruff.toml"
+          overwrite: false
+          content: |
+            line-length = 100
+
+            [lint]
+            select = ["E", "F", "I"]

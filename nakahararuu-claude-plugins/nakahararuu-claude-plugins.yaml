@@ -1,0 +1,51 @@
+# syntax=docker/sandbox-kit:3
+# Docker Sandboxes kit: every plugin published by the nakahararuu/claude-plugins
+# marketplace. Usage: see README.md.
+schemaVersion: "3"
+kind: mixin
+version: "1.0.0"
+displayName: nakahararuu Claude Plugins
+description: Adds the nakahararuu/claude-plugins marketplace and installs every plugin it publishes
+sourceUrl: https://github.com/nakahararuu/sbx-kits/tree/main/nakahararuu-claude-plugins
+requires: ["claude"]
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      install:
+        allow:
+          # apt-get install jq (only when the base lacks it). `apt-get update`
+          # refreshes every configured source: Ubuntu serves amd64 from
+          # archive/security and arm64 from ports, and the *-docker templates
+          # pre-add Docker's repo.
+          - archive.ubuntu.com
+          - security.ubuntu.com
+          - ports.ubuntu.com
+          - download.docker.com
+          # marketplace add + plugin install (git clone from GitHub)
+          - github.com
+          - api.github.com
+      runtime:
+        allow:
+          # plugin updates (marketplace git fetch)
+          - github.com
+          - api.github.com
+
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      install:
+        - command: |
+            command -v jq >/dev/null || (apt-get update -qq && apt-get install -y -qq jq)
+          user: "0"
+          env: [HTTP_PROXY, HTTPS_PROXY, NO_PROXY]
+          description: Ensure jq is available
+        - command: |
+            set -e
+            claude plugin marketplace add nakahararuu/claude-plugins
+            MARKETPLACE_JSON="$HOME/.claude/plugins/marketplaces/nakahararuu-claude-plugins/.claude-plugin/marketplace.json"
+            for plugin in $(jq -r '.plugins[].name' "$MARKETPLACE_JSON"); do
+              claude plugin install "${plugin}@nakahararuu-claude-plugins"
+            done
+          user: "1000"
+          env: [HTTP_PROXY, HTTPS_PROXY, NO_PROXY]
+          description: Add nakahararuu/claude-plugins marketplace and install all its plugins

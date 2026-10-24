@@ -1,0 +1,49 @@
+# syntax=docker/sandbox-kit:3
+# Docker Sandboxes kit: the sbx CLI, for developing the kits in this monorepo.
+# Usage: see README.md.
+schemaVersion: "3"
+kind: mixin
+version: "1.0.0"
+displayName: sbx Kit Dev Tools
+description: Installs the sbx CLI so kits in this monorepo can be inspected (sbx kit inspect) from inside the sandbox
+sourceUrl: https://github.com/nakahararuu/sbx-kits/tree/main/sbx-kit-dev
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      install:
+        allow:
+          # latest-release lookup + asset download
+          - api.github.com
+          - github.com
+          - objects.githubusercontent.com
+          - release-assets.githubusercontent.com
+
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      install:
+        - command: |
+            set -e
+            mkdir -p /tmp/sbx-cli-install
+            ARCH=$(uname -m)
+            case "$ARCH" in
+              x86_64) ARCH_PATTERN="linux-amd64" ;;
+              aarch64|arm64) ARCH_PATTERN="linux-arm64" ;;
+              *) echo "Unsupported arch: $ARCH"; exit 1 ;;
+            esac
+            RELEASE_URL=$(curl -fsSL https://api.github.com/repos/docker/sbx-releases/releases/latest \
+              | grep browser_download_url \
+              | grep "DockerSandboxes-${ARCH_PATTERN}\.tar\.gz" \
+              | head -1 \
+              | cut -d'"' -f4)
+            curl -fsSL "$RELEASE_URL" | tar xz -C /tmp/sbx-cli-install docker-sbx/sbx
+            install -m755 /tmp/sbx-cli-install/docker-sbx/sbx /usr/local/bin/sbx
+            rm -rf /tmp/sbx-cli-install
+          user: "0"
+          env: [HTTP_PROXY, HTTPS_PROXY, NO_PROXY]
+          description: Install the sbx CLI (static binary, no daemon/VM setup required for kit inspect)
+
+  # v2's agentInstructions body, staged from the file beside this descriptor.
+  - type: com.docker.sandbox/agent-context@1
+    config:
+      contentFile: ./sbx-kit-dev-context.md

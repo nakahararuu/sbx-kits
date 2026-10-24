@@ -24,7 +24,7 @@ Miro・Slack plugin はどちらもリモート MCP サーバー（`mcp.miro.com
 ## 使い方
 
 ```bash
-sbx run claude --kit /path/to/claude-documentation/
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=claude-documentation" .
 ```
 
-see: https://docs.docker.com/ai/sandboxes/customize/kits/
+see: https://docs.docker.com/ai/sandboxes/customize/

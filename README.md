@@ -1,8 +1,8 @@
 # sbx-kits
 
-[Docker Sandboxes](https://docs.docker.com/ai/sandboxes/) 用の kit（mixin）を集めたモノレポです。各ディレクトリが 1 つの kit に対応し、`spec.yaml` でネットワークポリシーやインストール/起動コマンドを定義しています。
+[Docker Sandboxes](https://docs.docker.com/ai/sandboxes/) 用の kit（mixin）を集めたモノレポです。各ディレクトリが 1 つの kit に対応し、kit-spec v3 の記述子 `<kit>/<kit>.yaml`（先頭行 `# syntax=docker/sandbox-kit:3`）で capability（ネットワークポリシー、lifecycle hook、agent-context など）を定義しています。
 
-kit の仕様（schemaVersion、caps.network、commands など）については [`docs.docker.com` の Kits ドキュメント](https://docs.docker.com/ai/sandboxes/customize/kits/) および `.claude/rules/kit-spec.md` を参照してください。
+kit の仕様については [kit-spec v3](https://github.com/docker/sandbox-kit-spec/blob/main/docs/spec/SPEC-v3.md)、[`docs.docker.com` の Customize ドキュメント](https://docs.docker.com/ai/sandboxes/customize/) および `.claude/rules/kit-spec.md` を参照してください。
 
 ## Kit 一覧
 
@@ -20,42 +20,42 @@ kit の仕様（schemaVersion、caps.network、commands など）については
 | [`sample-network-policy`](./sample-network-policy) | ネットワークポリシー（allow/deny）のみを設定するサンプル |
 | [`sample-ruff-lint`](./sample-ruff-lint) | チーム共通設定付きで Ruff（Python linter）を導入するサンプル |
 
-各 kit の詳細（前提条件やトラブルシューティングなど）は、それぞれのディレクトリの `README.md` および `spec.yaml` の `agentContext` を参照してください。
+各 kit の詳細（前提条件やトラブルシューティングなど）は、それぞれのディレクトリの `README.md` および `<kit>-context.md`（agent-context）を参照してください。
 
 ## 使い方
+
+v3 kit は v3 workload とだけ組み合わせられます（組み込みの `claude` エージェント名は v2 kit 用なので、v3 kit とは併用できません）。Claude Code を使う場合は `docker.io/docker/sbx-kit-claude` workload を指定します。`sbx` v0.45 以降が必要です。
+
+### 事前準備: Git kit の取得元を許可する
+
+リモート kit の取得元はデフォルトで Docker Hub のみ許可されています。このリポジトリと docker/sbx-kits-contrib の kit を使うには、ホストで一度だけ次を実行します（設定値は allowlist 全体を置き換えます）。
+
+```bash
+sbx settings set kit.allowedSources '["docker.io/","github.com/docker/","github.com/nakahararuu/"]'
+```
 
 ### 新規サンドボックスを kit 付きで起動する
 
 ```bash
-sbx run <agent> --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=<kit-name>"
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
+  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=<kit-name>" .
 ```
 
-例: `datadog-claude` kit を付けて Claude Code サンドボックスを起動する
+複数の kit を同時に指定することもできます。docker/sbx-kits-contrib の kit は main ブランチが v2 のままなので、`ref=v3` を付けて v3 版を参照してください。
 
 ```bash
-sbx run claude --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=datadog-claude"
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
+  --kit "git+https://github.com/docker/sbx-kits-contrib.git#ref=v3&dir=mise" \
+  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-runtimes" \
+  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=chrome-devtools-host" .
 ```
 
-複数の kit を同時に指定することもできます。
+`sbx kit add` は既存の v3 サンドボックスに mixin を追加できないため、kit を足したいときはサンドボックスを作り直してください。
+
+### kit を編集した場合は検証する
+
+`sbx kit validate` は v3 のソース kit を扱えないので、kit frontend でビルドして検証します（CI も同じコマンドで全 kit を検証しています）。
 
 ```bash
-sbx run claude \
-  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=sbx-kit-dev" \
-  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=chrome-devtools-host"
+docker buildx build <kit-name> -f <kit-name>/<kit-name>.yaml --output type=cacheonly
 ```
-
-### 既存のサンドボックスに kit を追加する
-
-```bash
-sbx kit add <sandbox名> "git+https://github.com/nakahararuu/sbx-kits.git#dir=<kit-name>"
-```
-
-### kit を編集した場合は validate する
-
-`spec.yaml` を変更したら、コミット前に `sbx-kit-dev` kit が提供する `sbx` CLI で検証してください。
-
-```bash
-sbx kit validate /path/to/sbx-kits/<kit-name>/
-```
-
-`sbx kit inspect` / `sbx kit pack` も利用できます。詳しくは `sbx-kit-dev/README.md` を参照してください。
