@@ -12,17 +12,18 @@ plugin 名をハードコードせず動的に列挙してインストールし�
 
 ## ネットワーク
 
-| 用途 | ドメイン |
-|------|----------|
-| マーケットプレイスの git clone | `github.com` |
-| GitHub API アクセス | `api.github.com` |
+| フェーズ | 用途 | ドメイン |
+|------|------|----------|
+| install | jq が無い場合の apt-get install（Ubuntu ミラーと、*-docker テンプレートが追加済みの Docker の apt リポジトリ） | `archive.ubuntu.com`, `security.ubuntu.com`, `ports.ubuntu.com`, `download.docker.com` |
+| install | マーケットプレイスの git clone / GitHub API | `github.com`, `api.github.com` |
+| runtime | plugin の更新（マーケットプレイスの git fetch） | `github.com`, `api.github.com` |
 
-**注意:** ここで許可しているのはマーケットプレイス自体の取得に必要なドメインのみ。将来追加される plugin が npm パッケージや外部 API など追加のネットワークアクセスを必要とする場合は、この `network.allowedDomains` を更新する必要がある。
+**注意:** ここで許可しているのはマーケットプレイス自体の取得に必要なドメインのみ。将来追加される plugin が npm パッケージや外部 API など追加のネットワークアクセスを必要とする場合は、`network-policy@1` の該当フェーズ（install 時の取得なら `install.allow`、実行時なら `runtime.allow`）を更新する必要がある。
 
 ## 使い方
 
 ```bash
-sbx run claude --kit /path/to/nakahararuu-claude-plugins/
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=nakahararuu-claude-plugins" .
 ```
 
-see: https://docs.docker.com/ai/sandboxes/customize/kits/
+see: https://docs.docker.com/ai/sandboxes/customize/

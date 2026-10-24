@@ -18,17 +18,18 @@ Claude Code 向け Datadog 調査用 mixin kit。
 
 以下のドメインへのアクセスを許可します。
 
-| 用途 | ドメイン |
-|------|----------|
-| Datadog API・アプリ（US全リージョン） | `datadoghq.com`, `*.datadoghq.com` |
-| Datadog EU | `datadoghq.eu`, `*.datadoghq.eu` |
-| Datadog Gov | `ddog-gov.com`, `*.ddog-gov.com` |
-| pup CLI インストール | `api.github.com`, `github.com`, `objects.githubusercontent.com` |
-| agent skills インストール | `registry.npmjs.org` |
-| Slack MCP plugin | `mcp.slack.com`, `slack.com`, `*.slack.com` |
+| フェーズ | 用途 | ドメイン |
+|------|------|----------|
+| install | pup CLI インストール（GitHub Releases）・plugin install | `github.com`, `api.github.com`, `objects.githubusercontent.com` |
+| install | agent skills インストール（npx skills add） | `registry.npmjs.org` |
+| runtime | Datadog API・アプリ（US全リージョン） | `datadoghq.com`, `*.datadoghq.com` |
+| runtime | Datadog EU | `datadoghq.eu`, `*.datadoghq.eu` |
+| runtime | Datadog Gov | `ddog-gov.com`, `*.ddog-gov.com` |
+| runtime | plugin の更新（マーケットプレイスの git fetch） | `github.com`, `api.github.com` |
+| runtime | Slack MCP plugin | `mcp.slack.com`, `slack.com`, `*.slack.com` |
 
 ## 使い方
 
 ```bash
-sbx run claude --kit /path/to/datadog-claude/
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=datadog-claude" .
 ```

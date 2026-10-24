@@ -1,0 +1,42 @@
+# syntax=docker/sandbox-kit:3
+# Docker Sandboxes kit: network grants for mise's core language plugins.
+# Composes with the mise kit from docker/sbx-kits-contrib. See README.md.
+schemaVersion: "3"
+kind: mixin
+version: "1.0.0"
+displayName: mise Language Runtime Domains
+description: Extends the mise kit (docker/sbx-kits-contrib) with the domains mise's core plugins need to install Java, Go, Python, and Node
+sourceUrl: https://github.com/nakahararuu/sbx-kits/tree/main/mise-runtimes
+
+capabilities:
+  # `mise install` runs on demand inside the live sandbox (agent or user), so
+  # every host here is a runtime grant; no install hook reaches them.
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      runtime:
+        allow:
+          # Node
+          - nodejs.org
+          - unofficial-builds.nodejs.org
+          - mise-versions.jdx.dev
+          # Go
+          - dl.google.com
+          # Java (default "openjdk" vendor)
+          - mise-java.jdx.dev
+          - download.java.net
+          # Java vendor-specific CDNs (zulu, liberica/liberica-nik, jetbrains,
+          # oracle/oracle-graalvm, redhat). NOT included: microsoft's aka.ms —
+          # it's Microsoft's general-purpose URL shortener, not a domain scoped
+          # to JDK downloads, so allowing it would let any aka.ms/<code> redirect
+          # through, defeating the point of a domain allowlist.
+          - cdn.azul.com
+          - download.bell-sw.com
+          - cache-redirector.jetbrains.com
+          - download.oracle.com
+          - developers.redhat.com
+          # Shared: go version listing (git ls-remote), python-build-standalone
+          # releases + assets, most non-default java vendors
+          - github.com
+          - api.github.com
+          - objects.githubusercontent.com
+          - release-assets.githubusercontent.com

@@ -1,0 +1,61 @@
+# syntax=docker/sandbox-kit:3
+# Docker Sandboxes kit: documentation tooling (Miro, Slack, Cosense) for
+# Claude Code. Usage and design notes: see README.md.
+schemaVersion: "3"
+kind: mixin
+version: "1.0.0"
+displayName: Claude Documentation Tools
+description: Adds Miro and Slack plugins from the official Anthropic marketplace, plus the Cosense (Scrapbox) skill and CLI
+sourceUrl: https://github.com/nakahararuu/sbx-kits/tree/main/claude-documentation
+requires: ["claude"]
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      install:
+        allow:
+          # marketplace / plugin source install (GitHub)
+          - github.com
+          - api.github.com
+          # cosense CLI install
+          - registry.npmjs.org
+      runtime:
+        allow:
+          # plugin updates (marketplace git fetch)
+          - github.com
+          - api.github.com
+          # Miro MCP plugin
+          - mcp.miro.com
+          - miro.com
+          - "*.miro.com"
+          # Slack MCP plugin
+          - mcp.slack.com
+          - slack.com
+          - "*.slack.com"
+          # Cosense (Scrapbox) API
+          - scrapbox.io
+          - "*.scrapbox.io"
+
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      install:
+        - command: |
+            set -e
+            claude plugin marketplace add anthropics/claude-plugins-official
+            claude plugin install miro@claude-plugins-official
+            claude plugin install slack@claude-plugins-official
+          user: "1000"
+          env: [HTTP_PROXY, HTTPS_PROXY, NO_PROXY]
+          description: Install Miro and Slack plugins from the official Anthropic marketplace
+        - command: |
+            set -e
+            claude plugin marketplace add helpfeel/cosense-cli
+            claude plugin install cosense-cli@cosense-cli
+          user: "1000"
+          env: [HTTP_PROXY, HTTPS_PROXY, NO_PROXY]
+          description: Install the Cosense (Scrapbox) skill plugin
+        - command: |
+            npm install -g @helpfeel/cosense-cli
+          user: "0"
+          env: [HTTP_PROXY, HTTPS_PROXY, NO_PROXY]
+          description: Install the cosense CLI (companion tool required by the Cosense skill)

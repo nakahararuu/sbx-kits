@@ -1,0 +1,79 @@
+# syntax=docker/sandbox-kit:3
+# Docker Sandboxes kit: lets Claude Code drive the Chrome running on the host
+# through chrome-devtools-mcp. Usage and design notes: see README.md.
+schemaVersion: "3"
+kind: mixin
+version: "1.0.0"
+displayName: Chrome DevTools (Host Browser)
+description: Lets Claude Code control the Chrome browser running on the host machine via the official chrome-devtools-mcp plugin, bridging the sandbox to the host's remote-debugging port
+sourceUrl: https://github.com/nakahararuu/sbx-kits/tree/main/chrome-devtools-host
+requires: ["claude"]
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      install:
+        allow:
+          # apt-get install socat jq. `apt-get update` refreshes every
+          # configured source: Ubuntu serves amd64 from archive/security and
+          # arm64 from ports, and the *-docker templates pre-add Docker's repo.
+          - archive.ubuntu.com
+          - security.ubuntu.com
+          - ports.ubuntu.com
+          - download.docker.com
+          # marketplace add + plugin install (git clone from GitHub)
+          - github.com
+          - api.github.com
+      runtime:
+        allow:
+          # host.docker.internal:9222 access is granted under the "localhost:<port>"
+          # policy convention used for reaching host-bound services
+          - localhost:9222
+          # chrome-devtools-mcp npx resolution at MCP server start
+          - registry.npmjs.org
+          # plugin updates (marketplace git fetch)
+          - github.com
+          - api.github.com
+
+  - type: com.docker.sandbox/lifecycle@1
+    config:
+      install:
+        - command: |
+            set -e
+            apt-get update -qq
+            apt-get install -y -qq socat jq
+          user: "0"
+          env: [HTTP_PROXY, HTTPS_PROXY, NO_PROXY]
+          description: Install socat (host bridge) and jq (patching the plugin's MCP config)
+        - command: |
+            set -e
+            claude plugin marketplace add ChromeDevTools/chrome-devtools-mcp
+            claude plugin install chrome-devtools-mcp@chrome-devtools-plugins
+          user: "1000"
+          env: [HTTP_PROXY, HTTPS_PROXY, NO_PROXY]
+          description: Install the chrome-devtools-mcp plugin directly from upstream (tracks latest skills/releases, not the anthropics mirror)
+      startup:
+        - command:
+            - bash
+            - -c
+            - |
+              set -e
+              PJ=$(find "$HOME/.claude/plugins/cache/chrome-devtools-plugins/chrome-devtools-mcp" -path '*/.claude-plugin/plugin.json' 2>/dev/null | head -1)
+              if [ -n "$PJ" ] && ! grep -q -- '--browser-url=http://localhost:9222' "$PJ"; then
+                jq '(.mcpServers["chrome-devtools"].args) |= (if index("--browser-url=http://localhost:9222") then . else . + ["--browser-url=http://localhost:9222"] end)' "$PJ" > "$PJ.tmp" && mv "$PJ.tmp" "$PJ"
+              fi
+          user: "1000"
+          description: Ensure the plugin points at the host bridge (survives plugin updates and cache resets)
+        - command:
+            - bash
+            - -c
+            - |
+              pgrep -x socat >/dev/null 2>&1 || exec socat TCP-LISTEN:9222,fork,reuseaddr TCP:host.docker.internal:9222
+          user: "1000"
+          background: true
+          description: (Re)launch the socat bridge to the host's Chrome (dies on sandbox restart, so it's relaunched at every startup)
+
+  # v2's agentInstructions body, staged from the file beside this descriptor.
+  - type: com.docker.sandbox/agent-context@1
+    config:
+      contentFile: ./chrome-devtools-host-context.md

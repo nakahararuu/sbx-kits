@@ -1,16 +1,20 @@
 # mise-runtimes
 
-[docker/sbx-kits-contrib の `mise` kit](https://github.com/docker/sbx-kits-contrib/tree/main/mise) を拡張する mixin kit。mise で **Java / Go / Python / Node** を install するのに必要な domain を allow する。
+[docker/sbx-kits-contrib の `mise` kit](https://github.com/docker/sbx-kits-contrib/tree/v3/mise) を拡張する mixin kit。mise で **Java / Go / Python / Node** を install するのに必要な domain を allow する。
 
 この kit 単体では mise 自体はインストールしません。必ず本家 `mise` kit と併用してください。
 
 ```bash
-sbx run claude --kit mise --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-runtimes"
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
+  --kit "git+https://github.com/docker/sbx-kits-contrib.git#ref=v3&dir=mise" \
+  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-runtimes" .
 ```
 
 ## ネットワーク
 
 mise のコア plugin 実装(`jdx/mise` の `src/plugins/core/{node,go,python,java}.rs`)を直接確認して洗い出した、install 時・実行時の実通信先。
+
+`mise install` はサンドボックスの作成後に（エージェントやユーザーが）実行するので、ここに挙げたドメインはすべて `network-policy@1` の **runtime** フェーズで許可している（install hook は無い）。
 
 | 用途 | ドメイン | 備考 |
 |------|----------|------|
@@ -21,7 +25,7 @@ mise のコア plugin 実装(`jdx/mise` の `src/plugins/core/{node,go,python,ja
 | Go バージョン一覧 | `github.com` | `git ls-remote --tags https://github.com/golang/go` を直接実行(mise-versions キャッシュは意図的に不使用) |
 | Java バージョン・ダウンロード先メタデータ | `mise-java.jdx.dev` | `/jvm/<release_type>/<os>/<arch>.json` |
 | Java 本体(デフォルト vendor = `openjdk`) | `download.java.net` | `java.shorthand_vendor` のデフォルトはこの vendor(実際のJSONレスポンスで確認済み) |
-| Python 本体(precompiled、Linux x86_64/arm64のデフォルト経路) | `github.com`, `api.github.com`, `objects.githubusercontent.com` | astral-sh/python-build-standalone の GitHub Releases。releases API 一覧は `api.github.com`、`github.com/.../releases/download/...` は `objects.githubusercontent.com` へ 302 することを実際に確認済み |
+| Python 本体(precompiled、Linux x86_64/arm64のデフォルト経路) | `github.com`, `api.github.com`, `objects.githubusercontent.com`, `release-assets.githubusercontent.com` | astral-sh/python-build-standalone の GitHub Releases。releases API 一覧は `api.github.com`、`github.com/.../releases/download/...` は `objects.githubusercontent.com` へ 302 することを実際に確認済み。アセットによってはリダイレクト先が `release-assets.githubusercontent.com` になるため、こちらも許可 |
 | Java 本体(`temurin` 等 GitHub Releases 系 vendor) | 同上 | vendor 一覧の実データで `github.com`/`objects.githubusercontent.com` 配下と確認 |
 | Java 本体(`zulu` vendor) | `cdn.azul.com` | |
 | Java 本体(`liberica` / `liberica-nik` vendor) | `download.bell-sw.com` | |
@@ -34,7 +38,9 @@ mise のコア plugin 実装(`jdx/mise` の `src/plugins/core/{node,go,python,ja
 ## 使い方
 
 ```bash
-sbx run claude --kit mise --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-runtimes"
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
+  --kit "git+https://github.com/docker/sbx-kits-contrib.git#ref=v3&dir=mise" \
+  --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=mise-runtimes" .
 ```
 
 kit 適用後:

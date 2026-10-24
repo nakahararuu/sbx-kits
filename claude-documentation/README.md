@@ -13,18 +13,19 @@ Miro・Slack plugin はどちらもリモート MCP サーバー（`mcp.miro.com
 
 ## ネットワーク
 
-| 用途 | ドメイン |
-|------|----------|
-| マーケットプレイスの git clone / GitHub API | `github.com`, `api.github.com` |
-| cosense CLI の npm install | `registry.npmjs.org` |
-| Miro MCP plugin | `mcp.miro.com`, `miro.com`, `*.miro.com` |
-| Slack MCP plugin | `mcp.slack.com`, `slack.com`, `*.slack.com` |
-| Cosense (Scrapbox) API | `scrapbox.io`, `*.scrapbox.io` |
+| フェーズ | 用途 | ドメイン |
+|------|------|----------|
+| install | マーケットプレイスの git clone / GitHub API | `github.com`, `api.github.com` |
+| install | cosense CLI の npm install | `registry.npmjs.org` |
+| runtime | plugin の更新（マーケットプレイスの git fetch） | `github.com`, `api.github.com` |
+| runtime | Miro MCP plugin | `mcp.miro.com`, `miro.com`, `*.miro.com` |
+| runtime | Slack MCP plugin | `mcp.slack.com`, `slack.com`, `*.slack.com` |
+| runtime | Cosense (Scrapbox) API | `scrapbox.io`, `*.scrapbox.io` |
 
 ## 使い方
 
 ```bash
-sbx run claude --kit /path/to/claude-documentation/
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=claude-documentation" .
 ```
 
-see: https://docs.docker.com/ai/sandboxes/customize/kits/
+see: https://docs.docker.com/ai/sandboxes/customize/

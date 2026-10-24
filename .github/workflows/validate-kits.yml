@@ -5,11 +5,11 @@ on:
     branches:
       - main
     paths:
-      - "**/spec.yaml"
+      - "*/**"
       - ".github/workflows/validate-kits.yml"
   pull_request:
     paths:
-      - "**/spec.yaml"
+      - "*/**"
       - ".github/workflows/validate-kits.yml"
   workflow_dispatch: {}
 
@@ -25,14 +25,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # A kit is a directory holding a v3 descriptor named after it
+      # (<kit>/<kit>.yaml) whose first line is the kit frontend's syntax
+      # directive. A leftover v2 spec.yaml, or a <kit>/<kit>.yaml without that
+      # directive, is reported as a failure instead of being silently skipped
+      # (otherwise CI would pass without validating that kit).
       - name: List kit directories
         id: list
         run: |
           set -euo pipefail
-          kits=$(find . -mindepth 2 -maxdepth 2 -name 'spec.yaml' \
-            | sed -E 's#^\./##; s#/spec\.yaml$##' \
-            | sort \
-            | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          if stale=$(find . -mindepth 2 -maxdepth 2 -name 'spec.yaml' | grep .); then
+            echo "::error::v2 spec.yaml found (migrate to <kit>/<kit>.yaml, kit-spec v3): $stale"
+            exit 1
+          fi
+          kits=()
+          missing_syntax=()
+          for f in */*.yaml; do
+            kit=${f%%/*}
+            [[ "$f" == "$kit/$kit.yaml" ]] || continue
+            if head -1 "$f" | grep -q '^# syntax=docker/sandbox-kit:3'; then
+              kits+=("$kit")
+            else
+              missing_syntax+=("$f")
+            fi
+          done
+          if (( ${#missing_syntax[@]} > 0 )); then
+            echo "::error::kit descriptor without '# syntax=docker/sandbox-kit:3' on its first line: ${missing_syntax[*]}"
+            exit 1
+          fi
+          kits=$(printf '%s\n' "${kits[@]}" | sort | jq -R -s -c 'split("\n") | map(select(length > 0))')
           echo "kits=$kits" >> "$GITHUB_OUTPUT"
           echo "Discovered kits: $kits"
 
@@ -46,38 +67,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Same install logic as sbx-kit-dev/spec.yaml `setup.install`,
-      # kept in sync manually since GitHub Actions runners can't apply kits to themselves.
-      - name: Install sbx CLI
+      # `sbx kit validate` rejects v3 source kits; building the descriptor with
+      # the kit frontend (docker/sandbox-kit:3) is the v3 validation path.
+      # Strict decoding fails on unknown/misplaced fields, naming field and line.
+      - name: Build ${{ matrix.kit }} with the kit frontend
         run: |
-          set -euo pipefail
-          mkdir -p /tmp/sbx-cli-install
-          ARCH=$(uname -m)
-          case "$ARCH" in
-            x86_64) ARCH_PATTERN="linux-amd64" ;;
-            aarch64|arm64) ARCH_PATTERN="linux-arm64" ;;
-            *) echo "Unsupported arch: $ARCH"; exit 1 ;;
-          esac
-          RELEASE_URL=$(curl -fsSL https://api.github.com/repos/docker/sbx-releases/releases/latest \
-            | grep browser_download_url \
-            | grep "DockerSandboxes-${ARCH_PATTERN}\.tar\.gz" \
-            | head -1 \
-            | cut -d'"' -f4)
-          curl -fsSL "$RELEASE_URL" | tar xz -C /tmp/sbx-cli-install docker-sbx/sbx
-          sudo install -m755 /tmp/sbx-cli-install/docker-sbx/sbx /usr/local/bin/sbx
-          rm -rf /tmp/sbx-cli-install
-
-      # WARN lines (e.g. deprecated v1 network.allowedDomains) are treated as
-      # failures too, matching the local PostToolUse hook's convention
-      # (.claude/hooks/validate-kit-spec.sh).
-      - name: sbx kit validate ${{ matrix.kit }}
-        run: |
-          set +e
-          output="$(sbx kit validate "${{ matrix.kit }}" 2>&1)"
-          status=$?
-          set -e
-          echo "$output"
-          if [[ $status -ne 0 ]] || grep -q '^WARN:' <<< "$output"; then
-            echo "::error::sbx kit validate ${{ matrix.kit }} failed"
-            exit 1
-          fi
+          docker buildx build "${{ matrix.kit }}" \
+            -f "${{ matrix.kit }}/${{ matrix.kit }}.yaml" \
+            --output type=cacheonly

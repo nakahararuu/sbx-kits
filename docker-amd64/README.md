@@ -11,12 +11,12 @@ arm64 サンドボックス上で `--platform linux/amd64` の Docker コンテ�
 
 マウントと登録はカーネル/ランタイムの状態であり、サンドボックス再起動で失われるため、`install`（一度きり）ではなく `startup`（毎起動・冪等）コマンドとして実装しています。
 
-`commands.install` に処理を置かなかったのは、`install` フェーズは実際のサンドボックス起動前の一時的なプロビジョニング用コンテナ内で動いており、`/var/run/docker.sock` がまだマウントされていないためです（`docker pull`/`docker run` は `dial unix /var/run/docker.sock: ... no such file or directory` で失敗します）。`docker run` はイメージが無ければ自動 pull してくれるので、上記の `startup` コマンドが初回起動時に `tonistiigi/binfmt` を pull（数秒程度）し、以降の起動ではキャッシュを使い回します。
+`lifecycle@1` の `install` hook に処理を置かなかったのは、`install` フェーズは実際のサンドボックス起動前の一時的なプロビジョニング用コンテナ内で動いており、`/var/run/docker.sock` がまだマウントされていないためです（`docker pull`/`docker run` は `dial unix /var/run/docker.sock: ... no such file or directory` で失敗します）。`docker run` はイメージが無ければ自動 pull してくれるので、上記の `startup` コマンドが初回起動時に `tonistiigi/binfmt` を pull（数秒程度）し、以降の起動ではキャッシュを使い回します。
 
 ## 使い方
 
 ```bash
-sbx run claude --kit /path/to/docker-amd64/
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=docker-amd64" .
 ```
 
 kit 適用後:

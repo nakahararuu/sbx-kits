@@ -15,7 +15,7 @@ Claude Code のセッション（LLM呼び出し・ツール呼び出し・ト�
 
 このkitは `credentials:` ブロックを使いません。Langfuse サーバーと、それに送信する plugin の両方が同じサンドボックス内で完結するため、ホスト側の `sbx secret set` は不要です。
 
-`commands.install` 実行時に以下をすべてローカルで生成し、`/opt/langfuse/.env` に書き込みます。
+`lifecycle@1` の `install` hook 実行時に以下をすべてローカルで生成し、`/opt/langfuse/.env` に書き込みます。
 
 - Postgres / ClickHouse / Redis / MinIO のパスワード
 - Langfuse の `NEXTAUTH_SECRET` / `SALT` / `ENCRYPTION_KEY`
@@ -28,13 +28,13 @@ plugin 側の設定は `claude plugin install ... --config` ではなく、`~/.c
 ## 使い方
 
 ```bash
-sbx run claude --kit /path/to/langfuse-claude/
+sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit "git+https://github.com/nakahararuu/sbx-kits.git#dir=langfuse-claude" .
 ```
 
 普段通り `claude` を使うだけで、ターンごとに自動でトレースが送信されます。
 
 - トレース対象は `claude` CLI セッションと Desktop アプリの **Code mode** のみ。Desktop の通常 Chat mode は hook が発火しないため対象外
-- Langfuse の Web UI はコンテナのポート3000で待ち受けています。ダッシュボードをブラウザで見るには、ホストで以下を実行してください（このkit-spec バージョンには `ports:` によるポート自動公開機能がないため、手動公開が必要です）
+- Langfuse の Web UI はコンテナのポート3000で待ち受けています。ダッシュボードをブラウザで見るには、ホストで以下を実行してください（v3 の `port@1` でも自動公開はできますが、ホスト側のポートは runtime が空きポートを割り当てるため、`NEXTAUTH_URL=http://localhost:3000` と一致せずログイン後のリダイレクトが壊れます。そのため 3000 番で手動公開しています）
   ```bash
   sbx ports <sandbox名> --publish 3000:3000
   ```
@@ -49,13 +49,15 @@ sbx run claude --kit /path/to/langfuse-claude/
 
 以下のドメインへのアクセスを許可します。
 
-| 用途 | ドメイン |
-|------|----------|
-| plugin marketplace 追加・インストール（GitHub） | `github.com`, `api.github.com`, `objects.githubusercontent.com` |
-| Langfuse Python SDK の初回ダウンロード（`uv run --script` 経由） | `pypi.org`, `files.pythonhosted.org` |
-| minio イメージ（`cgr.dev/chainguard/minio`）の pull | `cgr.dev`, `*.r2.cloudflarestorage.com` |
+| フェーズ | 用途 | ドメイン |
+|------|------|----------|
+| install | plugin marketplace 追加・インストール（GitHub） | `github.com`, `api.github.com`, `objects.githubusercontent.com` |
+| install | langfuse-cli の npm install | `registry.npmjs.org` |
+| runtime | plugin の更新（マーケットプレイスの git fetch） | `github.com`, `api.github.com`, `objects.githubusercontent.com` |
+| runtime | Langfuse Python SDK の初回ダウンロード（`uv run --script` 経由） | `pypi.org`, `files.pythonhosted.org` |
+| runtime | minio イメージ（`cgr.dev/chainguard/minio`）の pull（startup hook の `docker compose up -d`） | `cgr.dev`, `*.r2.cloudflarestorage.com` |
 
-Docker イメージの pull は `commands.startup` 内の `docker compose up -d` で行われます（`commands.install` の時点では Docker ソケットがまだマウントされておらず `docker` コマンドが使えないため）。`docker.io` からの pull（`langfuse/*`, `clickhouse/clickhouse-server`, `redis`, `postgres`）には `caps.network.allow` へのエントリは不要ですが、`cgr.dev`（minio イメージのレジストリ）は別ホストなので上表のとおり明示的に allow しています。`cgr.dev` はマニフェスト解決のみを担当し、実際のイメージレイヤーは `*.r2.cloudflarestorage.com`（Cloudflare R2、Chainguard のブロブストレージ backend）にリダイレクトされるため、そちらも allow が必要です。
+Docker イメージの pull は `lifecycle@1` の `startup` hook 内の `docker compose up -d` で行われます（`lifecycle@1` の `install` hook の時点では Docker ソケットがまだマウントされておらず `docker` コマンドが使えないため）。`docker.io` からの pull（`langfuse/*`, `clickhouse/clickhouse-server`, `redis`, `postgres`）には `network-policy@1` の allow へのエントリは不要ですが、`cgr.dev`（minio イメージのレジストリ）は別ホストなので上表のとおり明示的に allow しています。`cgr.dev` はマニフェスト解決のみを担当し、実際のイメージレイヤーは `*.r2.cloudflarestorage.com`（Cloudflare R2、Chainguard のブロブストレージ backend）にリダイレクトされるため、そちらも allow が必要です。
 
 ## スコープ外
 

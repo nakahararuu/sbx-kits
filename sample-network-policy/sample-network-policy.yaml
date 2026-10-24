@@ -1,0 +1,17 @@
+# syntax=docker/sandbox-kit:3
+# Sample kit: network policy only (no hooks, no recipe).
+schemaVersion: "3"
+kind: mixin
+version: "1.0.0"
+displayName: Allow specific domains
+description: "Allow only specific domains for outbound network access"
+
+capabilities:
+  - type: com.docker.sandbox/network-policy@1
+    config:
+      runtime:
+        allow:
+          - api.example.com
+          - "*.cdn.example.com"
+        deny:
+          - telemetry.example.com
