@@ -44,7 +44,7 @@ Chrome の DevTools WebSocket サーバーは `Host` ヘッダーが `localhost:
 
 | フェーズ | 用途 | ドメイン |
 |------|------|----------|
-| install | socat / jq の apt-get install（Ubuntu ミラーと、*-docker テンプレートが追加済みの Docker の apt リポジトリ） | `archive.ubuntu.com`, `security.ubuntu.com`, `ports.ubuntu.com`, `download.docker.com` |
+| install | socat / jq の apt-get install（DHI ベースの Debian / DHI リポジトリ、旧 Ubuntu ベースのミラー、*-docker テンプレートが追加済みの Docker の apt リポジトリ） | `deb.debian.org`, `dhi.io`, `archive.ubuntu.com`, `security.ubuntu.com`, `ports.ubuntu.com`, `download.docker.com` |
 | install | upstream のマーケットプレイス・plugin ソースの取得（git clone） | `github.com`, `api.github.com` |
 | runtime | ホストの Chrome DevTools ポートへの接続（socat 経由） | `localhost:9222` |
 | runtime | chrome-devtools-mcp の npx 解決（MCP サーバー起動時） | `registry.npmjs.org` |
@@ -53,7 +53,7 @@ Chrome の DevTools WebSocket サーバーは `Host` ヘッダーが `localhost:
 ## 使い方
 
 ```bash
-sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit ghcr.io/nakahararuu/sbx-kits/chrome-devtools-host:latest .
+sbx run docker.io/docker/sbx-kit-claude:2.1.311 --kit ghcr.io/nakahararuu/sbx-kits/chrome-devtools-host:latest .
 ```
 
 導入後、Claude から見ると `claude mcp list` に `plugin:chrome-devtools-mcp:chrome-devtools` という名前で（`--browser-url=http://localhost:9222` 付きで）Chrome DevTools ツールが使える。

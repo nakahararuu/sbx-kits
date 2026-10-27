@@ -5,7 +5,7 @@
 この kit 単体では mise 自体はインストールしません。必ず本家 `mise` kit と併用してください。
 
 ```bash
-sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
+sbx run docker.io/docker/sbx-kit-claude:2.1.311 \
   --kit docker.io/sbx/mise:latest \
   --kit ghcr.io/nakahararuu/sbx-kits/mise-runtimes:latest .
 ```
@@ -38,7 +38,7 @@ mise のコア plugin 実装(`jdx/mise` の `src/plugins/core/{node,go,python,ja
 ## 使い方
 
 ```bash
-sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
+sbx run docker.io/docker/sbx-kit-claude:2.1.311 \
   --kit docker.io/sbx/mise:latest \
   --kit ghcr.io/nakahararuu/sbx-kits/mise-runtimes:latest .
 ```
