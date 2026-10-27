@@ -15,7 +15,7 @@ capabilities:
       install:
         allow:
           # apt-get install socat jq. `apt-get update` refreshes every
-          # configured source: the DHI (Debian) base from sbx-kit-claude 2.1.311
+          # configured source: the DHI (Debian) base of sbx-kit-claude 2.1.273+
           # uses deb.debian.org and dhi.io; the older Ubuntu base serves amd64
           # from archive/security and arm64 from ports. The *-docker templates
           # pre-add Docker's repo.
