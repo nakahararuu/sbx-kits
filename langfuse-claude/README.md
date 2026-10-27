@@ -28,7 +28,7 @@ plugin 側の設定は `claude plugin install ... --config` ではなく、`~/.c
 ## 使い方
 
 ```bash
-sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit ghcr.io/nakahararuu/sbx-kits/langfuse-claude:latest .
+sbx run docker.io/docker/sbx-kit-claude:2.1.311 --kit ghcr.io/nakahararuu/sbx-kits/langfuse-claude:latest .
 ```
 
 普段通り `claude` を使うだけで、ターンごとに自動でトレースが送信されます。

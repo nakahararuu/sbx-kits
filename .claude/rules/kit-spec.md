@@ -180,7 +180,7 @@ sandbox はデフォルトで送信通信を deny するため、kit が動か�
 
 ### 4. `apt-get` には apt ミラーの許可が要る
 
-`apt-get update` は設定済みの全ソースを更新するので、Ubuntu の `archive.ubuntu.com` / `security.ubuntu.com`（amd64）、`ports.ubuntu.com`（arm64）、`download.docker.com`（*-docker テンプレートが追加済み）を install フェーズに入れる（参考: `chrome-devtools-host`）。
+`apt-get update` は設定済みの全ソースを更新するので、ベースイメージのディストリビューションに合わせたミラーを install フェーズに入れる（参考: `chrome-devtools-host`）。`sbx-kit-claude` は 2.1.311 から DHI（Docker Hardened Images、Debian trixie）ベースになり、`deb.debian.org` と `dhi.io` を使う。それより前の Ubuntu ベースは `archive.ubuntu.com` / `security.ubuntu.com`（amd64）と `ports.ubuntu.com`（arm64）を使う。どちらでも `download.docker.com`（*-docker テンプレートが追加済み）が要る。ベースは workload のタグ更新で予告なく変わるので、両方を残しておく。
 
 ### 5. 動作確認の方法
 

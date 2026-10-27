@@ -30,7 +30,7 @@
 ## 使い方
 
 ```bash
-sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit ghcr.io/nakahararuu/sbx-kits/claude-plugins-small-medium:latest .
+sbx run docker.io/docker/sbx-kit-claude:2.1.311 --kit ghcr.io/nakahararuu/sbx-kits/claude-plugins-small-medium:latest .
 ```
 
 see: https://docs.docker.com/ai/sandboxes/customize/

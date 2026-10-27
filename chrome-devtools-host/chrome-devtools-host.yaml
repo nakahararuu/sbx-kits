@@ -3,7 +3,7 @@
 # through chrome-devtools-mcp. Usage and design notes: see README.md.
 schemaVersion: "3"
 kind: mixin
-version: "1.0.1"
+version: "1.0.2"
 displayName: Chrome DevTools (Host Browser)
 description: Lets Claude Code control the Chrome browser running on the host machine via the official chrome-devtools-mcp plugin, bridging the sandbox to the host's remote-debugging port
 sourceUrl: https://github.com/nakahararuu/sbx-kits/tree/main/chrome-devtools-host
@@ -15,8 +15,12 @@ capabilities:
       install:
         allow:
           # apt-get install socat jq. `apt-get update` refreshes every
-          # configured source: Ubuntu serves amd64 from archive/security and
-          # arm64 from ports, and the *-docker templates pre-add Docker's repo.
+          # configured source: the DHI (Debian) base from sbx-kit-claude 2.1.311
+          # uses deb.debian.org and dhi.io; the older Ubuntu base serves amd64
+          # from archive/security and arm64 from ports. The *-docker templates
+          # pre-add Docker's repo.
+          - deb.debian.org
+          - dhi.io
           - archive.ubuntu.com
           - security.ubuntu.com
           - ports.ubuntu.com

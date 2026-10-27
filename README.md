@@ -49,14 +49,14 @@ sbx settings set kit.allowedSources '["docker.io/","ghcr.io/nakahararuu/"]'
 ### 新規サンドボックスを kit 付きで起動する
 
 ```bash
-sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
+sbx run docker.io/docker/sbx-kit-claude:2.1.311 \
   --kit ghcr.io/nakahararuu/sbx-kits/<kit-name>:latest .
 ```
 
 複数の kit を同時に指定することもできます。docker/sbx-kits-contrib の v3 kit は `docker.io/sbx/<kit>` を使います。
 
 ```bash
-sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
+sbx run docker.io/docker/sbx-kit-claude:2.1.311 \
   --kit docker.io/sbx/mise:latest \
   --kit ghcr.io/nakahararuu/sbx-kits/mise-runtimes:latest \
   --kit ghcr.io/nakahararuu/sbx-kits/chrome-devtools-host:latest .
@@ -77,6 +77,6 @@ DRY_RUN=1 scripts/publish-kit.sh <kit-name>
 マージ前のブランチの kit をサンドボックスで試すときは、OCI exporter に対応した BuildKit があるホストで Git 参照を使います（`kit.allowedSources` に `"github.com/nakahararuu/"` も追加してください）。
 
 ```bash
-sbx run docker.io/docker/sbx-kit-claude:2.1.267 \
+sbx run docker.io/docker/sbx-kit-claude:2.1.311 \
   --kit "git+https://github.com/nakahararuu/sbx-kits.git#ref=<branch>&dir=<kit-name>" .
 ```

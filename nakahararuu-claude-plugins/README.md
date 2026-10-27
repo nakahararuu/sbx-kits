@@ -14,7 +14,7 @@ plugin 名をハードコードせず動的に列挙してインストールし�
 
 | フェーズ | 用途 | ドメイン |
 |------|------|----------|
-| install | jq が無い場合の apt-get install（Ubuntu ミラーと、*-docker テンプレートが追加済みの Docker の apt リポジトリ） | `archive.ubuntu.com`, `security.ubuntu.com`, `ports.ubuntu.com`, `download.docker.com` |
+| install | jq が無い場合の apt-get install（DHI ベースの Debian / DHI リポジトリ、旧 Ubuntu ベースのミラー、*-docker テンプレートが追加済みの Docker の apt リポジトリ） | `deb.debian.org`, `dhi.io`, `archive.ubuntu.com`, `security.ubuntu.com`, `ports.ubuntu.com`, `download.docker.com` |
 | install | マーケットプレイスの git clone / GitHub API | `github.com`, `api.github.com` |
 | runtime | plugin の更新（マーケットプレイスの git fetch） | `github.com`, `api.github.com` |
 
@@ -23,7 +23,7 @@ plugin 名をハードコードせず動的に列挙してインストールし�
 ## 使い方
 
 ```bash
-sbx run docker.io/docker/sbx-kit-claude:2.1.267 --kit ghcr.io/nakahararuu/sbx-kits/nakahararuu-claude-plugins:latest .
+sbx run docker.io/docker/sbx-kit-claude:2.1.311 --kit ghcr.io/nakahararuu/sbx-kits/nakahararuu-claude-plugins:latest .
 ```
 
 see: https://docs.docker.com/ai/sandboxes/customize/

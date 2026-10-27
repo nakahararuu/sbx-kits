@@ -3,7 +3,7 @@
 # marketplace. Usage: see README.md.
 schemaVersion: "3"
 kind: mixin
-version: "1.0.0"
+version: "1.0.1"
 displayName: nakahararuu Claude Plugins
 description: Adds the nakahararuu/claude-plugins marketplace and installs every plugin it publishes
 sourceUrl: https://github.com/nakahararuu/sbx-kits/tree/main/nakahararuu-claude-plugins
@@ -15,9 +15,12 @@ capabilities:
       install:
         allow:
           # apt-get install jq (only when the base lacks it). `apt-get update`
-          # refreshes every configured source: Ubuntu serves amd64 from
-          # archive/security and arm64 from ports, and the *-docker templates
-          # pre-add Docker's repo.
+          # refreshes every configured source: the DHI (Debian) base from
+          # sbx-kit-claude 2.1.311 uses deb.debian.org and dhi.io; the older
+          # Ubuntu base serves amd64 from archive/security and arm64 from ports.
+          # The *-docker templates pre-add Docker's repo.
+          - deb.debian.org
+          - dhi.io
           - archive.ubuntu.com
           - security.ubuntu.com
           - ports.ubuntu.com
