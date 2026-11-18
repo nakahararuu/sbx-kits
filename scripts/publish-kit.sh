@@ -4,8 +4,8 @@
 # Usage:
 #   scripts/publish-kit.sh <kit>
 #
-#   DRY_RUN=1 scripts/publish-kit.sh chrome-devtools-host   # build it, push nothing
-#   scripts/publish-kit.sh chrome-devtools-host             # build and push
+#   DRY_RUN=1 scripts/publish-kit.sh docker-amd64           # build it, push nothing
+#   scripts/publish-kit.sh docker-amd64                     # build and push
 #
 # Environment:
 #   IMAGE_PREFIX  default ghcr.io/nakahararuu/sbx-kits — published as <prefix>/<kit>

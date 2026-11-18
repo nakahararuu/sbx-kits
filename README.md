@@ -8,7 +8,6 @@ kit の仕様については [kit-spec v3](https://github.com/docker/sandbox-kit
 
 | kit | 概要 |
 | --- | --- |
-| [`chrome-devtools-host`](./chrome-devtools-host) | ホストマシン上で動く Chrome を `chrome-devtools-mcp` 経由で操作できるようにする |
 | [`claude-documentation`](./claude-documentation) | ClaudeがMiro、Cosenseを用いたドキュメンテーションを支援できるようにする |
 | [`claude-plugins-small-medium`](./claude-plugins-small-medium) | 公式マーケットプレイスから小〜中規模開発向け plugin（context7, feature-dev, code-review, pr-review-toolkit, commit-commands, security-guidance, serena）一式をインストールする |
 | [`datadog-claude`](./datadog-claude) | Datadogを使ったトラブルシューティング用ツール一式 |
@@ -58,8 +57,7 @@ sbx run docker.io/docker/sbx-kit-claude:2.1.311 \
 ```bash
 sbx run docker.io/docker/sbx-kit-claude:2.1.311 \
   --kit docker.io/sbx/mise:latest \
-  --kit ghcr.io/nakahararuu/sbx-kits/mise-runtimes:latest \
-  --kit ghcr.io/nakahararuu/sbx-kits/chrome-devtools-host:latest .
+  --kit ghcr.io/nakahararuu/sbx-kits/mise-runtimes:latest .
 ```
 
 `sbx kit add` は既存の v3 サンドボックスに mixin を追加できないため、kit を足したいときはサンドボックスを作り直してください。
